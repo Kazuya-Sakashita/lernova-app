@@ -9,5 +9,6 @@
     "**/coverage/**",
     "**/.gitignore",
     "doc/**"
-  ]
+  ],
+  "words": ["autoincrement", "supabase"]
 }
