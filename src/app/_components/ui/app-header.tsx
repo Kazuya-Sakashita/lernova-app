@@ -97,7 +97,8 @@ export function AppHeader() {
                     <Avatar.Image src="/placeholder.svg" alt="ユーザー" />
                     <Avatar.Fallback
                       style={{
-                        backgroundColor: "#FF66B2", // アプリのメインカラー（ピンク）
+                        background:
+                          "linear-gradient(135deg, #FF66B2, #D9006E, #FF3385)", // ピンクの濃淡を加えたグラデーション
                         color: "white",
                         fontSize: "14px", // フォントサイズ調整
                         borderRadius: "50%", // サークルにするためにborder-radiusを50%に設定
@@ -106,6 +107,9 @@ export function AppHeader() {
                         alignItems: "center",
                         height: "2.5rem", // サイズ調整（高さ）
                         width: "2.5rem", // サイズ調整（幅）
+                        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)", // モダンな影の効果を追加
+                        fontWeight: "bold", // フォントの太さを調整
+                        textTransform: "uppercase", // 文字を大文字にしてスタイリッシュに
                       }}
                     >
                       {user?.nickname || "ユーザー"}
