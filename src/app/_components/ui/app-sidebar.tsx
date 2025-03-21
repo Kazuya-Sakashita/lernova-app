@@ -71,7 +71,12 @@ export function AppSidebar() {
   const isAdmin = user?.isAdmin ?? false;
 
   // ローディング中またはエラー時の表示
-  if (isLoading && pathname !== "/login" && pathname !== "/signup") {
+  if (
+    isLoading &&
+    pathname !== "/login" &&
+    pathname !== "/signup" &&
+    pathname !== "/"
+  ) {
     return <div>ログイン状態を確認しています...</div>;
   }
 
