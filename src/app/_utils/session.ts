@@ -42,6 +42,7 @@ const fetchUserData = async () => {
       id: user.id,
       nickname: data?.nickname || user.email,
       isAdmin,
+      token: session.access_token, // トークンを返す
     };
   }
   return null;
@@ -60,6 +61,7 @@ export const useSession = () => {
   // isLoadingとisErrorをSWRで提供される情報をそのまま使用
   return {
     user: data,
+    token: data?.token, // トークンも返す
     isLoading: !data && !error, // ローディング状態
     isError: error, // エラー状態
     handleLogout, // ログアウト関数
