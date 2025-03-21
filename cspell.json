@@ -10,5 +10,5 @@
     "**/.gitignore",
     "doc/**"
   ],
-  "words": ["autoincrement", "supabase"]
+  "words": ["autoincrement", "supabase", "Loading", "NEXTAUTH"]
 }
