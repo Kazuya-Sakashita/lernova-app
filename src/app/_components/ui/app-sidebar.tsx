@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "@utils/session";
+import { useLogout } from "@hooks/useLogout";
 import {
   Home,
   BookOpen,
@@ -34,6 +35,7 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@ui/sidebar";
+import { Button } from "./button";
 
 // メニューアイテムを共通化したコンポーネント
 const MenuItem = ({
@@ -60,6 +62,7 @@ const MenuItem = ({
 export function AppSidebar() {
   const { user, isLoading, isError } = useSession();
   const pathname = usePathname();
+  const { handleLogout } = useLogout();
 
   // アクティブなリンクの判定
   const isActive = (path: string) =>
@@ -253,6 +256,16 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {isLoggedIn && (
+          <Button
+            variant="outline"
+            className="w-full border-pink-200 text-pink-600 hover:bg-pink-50 hover:text-pink-700"
+            onClick={handleLogout}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            ログアウト
+          </Button>
+        )}
       </SidebarContent>
 
       <SidebarRail />
