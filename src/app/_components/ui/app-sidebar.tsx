@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "@utils/session";
+import { useSession } from "@utils/session"; // ユーザー情報を取得するカスタムフック
 import {
   Home,
   BookOpen,
@@ -20,7 +20,7 @@ import {
   Bookmark,
   Heart,
   PlusCircle,
-} from "lucide-react";
+} from "lucide-react"; // アイコンのインポート
 
 import {
   Sidebar,
@@ -36,35 +36,46 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
   SidebarSeparator,
-} from "@ui/sidebar";
+} from "@ui/sidebar"; // サイドバーのUIコンポーネント
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@ui/collapsible";
+} from "@ui/collapsible"; // 折りたたみメニューのUIコンポーネント
 
 export function AppSidebar() {
   const { user, isLoading, isError } = useSession(); // SWRでユーザー情報を取得
-  const pathname = usePathname();
+  const pathname = usePathname(); // 現在のURLパスを取得
 
+  // アクティブなリンクの判定
   const isActive = (path: string) => {
-    return pathname === path || pathname.startsWith(path);
+    return pathname === path || pathname.startsWith(path); // 現在のパスが一致または部分一致する場合
   };
 
-  // ログインしているかどうかの判定
-  const isLoggedIn = user?.email ? true : false; // ユーザー情報がある場合はログインしていると判定
-  const userId = user?.id ?? null;
-  const isAdmin = user?.isAdmin ?? false;
+  // ログイン状態を判定
+  const isLoggedIn = user?.email ? true : false; // ユーザー情報がある場合はログインと判定
+  const userId = user?.id ?? null; // ユーザーID（ログインしていれば取得）
+  const isAdmin = user?.isAdmin ?? false; // ユーザーが管理者かどうか
 
-  // ローディング状態を非表示にし、エラーハンドリングも削除
+  // ログイン状態を確認している間、サインアップやログイン画面以外で表示しない
+  if (
+    isLoading &&
+    pathname !== "/login" &&
+    pathname !== "/signup" &&
+    pathname !== "/"
+  ) {
+    return <div>ログイン状態を確認しています...</div>;
+  }
+
+  // ローディング状態やエラーハンドリング
   if (isError) {
-    return <div>ユーザー情報の取得に失敗しました。</div>;
+    return <div>ユーザー情報の取得に失敗しました。</div>; // ユーザー情報取得エラー
   }
 
   return (
     <Sidebar className="w-16 md:w-64 fixed h-[calc(100vh-4rem)] top-16 z-40">
       <SidebarContent>
-        {/* ログインしている場合 */}
+        {/* ログイン状態のメニュー表示 */}
         {isLoggedIn ? (
           <>
             {/* メインメニュー */}
@@ -108,7 +119,7 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {/* 学習管理 */}
+            {/* 学習管理メニュー */}
             <SidebarGroup>
               <SidebarGroupLabel>学習管理</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -183,7 +194,7 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {/* コミュニティ */}
+            {/* コミュニティメニュー */}
             <SidebarGroup>
               <SidebarGroupLabel>コミュニティ</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -214,7 +225,7 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {/* 管理者メニュー */}
+            {/* 管理者メニューの表示 */}
             {isAdmin && (
               <>
                 <SidebarSeparator />

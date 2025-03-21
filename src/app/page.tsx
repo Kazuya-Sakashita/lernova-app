@@ -1,9 +1,34 @@
+"use client";
+
+import { useLogout } from "@hooks/useLogout"; // useLogoutをインポート
+import { useSession } from "@utils/session";
+
 export default function Home() {
+  const { user, isError } = useSession();
+  const { handleLogout } = useLogout(); // useLogoutを呼び出す
+
+  if (isError) {
+    return <div>ユーザー情報の取得に失敗しました。</div>;
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <p>ホーム画面</p>
-      </main>
+    <div className="min-h-screen flex justify-center items-center">
+      <div>
+        {user ? (
+          <>
+            <p>こんにちは, {user.nickname ?? user.email} さん！</p>
+            {/* ログアウトボタン */}
+            <button
+              onClick={handleLogout}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded"
+            >
+              ログアウト
+            </button>
+          </>
+        ) : (
+          <p>ログインしていません。</p>
+        )}
+      </div>
     </div>
   );
 }

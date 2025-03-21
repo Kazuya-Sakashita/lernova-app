@@ -15,21 +15,18 @@ import AppLogoLink from "../AppLogoLink";
 
 export function AppHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   const { user, isError, isLoading } = useSession(); // SWRでセッション情報を取得
   const { handleLogout } = useLogout();
 
   const pathname = usePathname(); // usePathname フックを使って pathname を取得
 
-  // menuItemsを定義
-  const menuItems = [
-    { label: "ホーム", link: "/" },
-    { label: "学習サポート", link: "/learning-support" },
-    { label: "成功事例", link: "/blog/success-stories" },
-  ];
-
-  // ログイン状態を確認している間、ヘッダーとサイドバーを非表示
-  if (isLoading && pathname !== "/login") {
+  // ログイン状態を確認している間、サインアップやログイン画面以外で表示しない
+  if (
+    isLoading &&
+    pathname !== "/login" &&
+    pathname !== "/signup" &&
+    pathname !== "/"
+  ) {
     return <div>ログイン状態を確認しています...</div>;
   }
 
@@ -37,10 +34,8 @@ export function AppHeader() {
     return <div>ユーザー情報の取得に失敗しました。</div>;
   }
 
-  // ユーザー情報を活用してログイン状態を判定
-  const isLoggedIn = user?.email ? true : false; // emailが存在すればログインしている
+  const isLoggedIn = user?.email ? true : false;
   const userId = user?.id ?? null;
-  const isAdmin = user?.isAdmin ?? false;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -54,26 +49,17 @@ export function AppHeader() {
               </Button>
             </DialogTrigger>
             <DialogContent className="p-0">
-              <AppSidebar
-                isLoggedIn={isLoggedIn}
-                userId={userId}
-                isAdmin={isAdmin}
-                onLogout={() => {
-                  setIsMobileMenuOpen(false);
-                  handleLogout();
-                }}
-                menuItems={menuItems} // menuItemsを渡す
-              />
+              <AppSidebar />
             </DialogContent>
           </Dialog>
 
           <div className="ml-">
             <AppLogoLink
-              href="/" // リンク先
-              logoText="Lernova" // ロゴのテキスト
-              iconColor="text-pink-500" // アイコンの色
-              textColor="text-black" // テキストの色
-              textSize="text-xl" // テキストのサイズ
+              href="/"
+              logoText="Lernova"
+              iconColor="text-pink-500"
+              textColor="text-black"
+              textSize="text-xl"
             />
           </div>
         </div>
@@ -113,33 +99,38 @@ export function AppHeader() {
                   </Avatar.Root>
                 </Button>
               </DropdownMenu.Trigger>
-              <DropdownMenu.Content align="end">
-                <DropdownMenu.Label>マイアカウント</DropdownMenu.Label>
-                <DropdownMenu.Separator />
+              <DropdownMenu.Content
+                align="end"
+                className="bg-white shadow-lg rounded-lg p-2 w-48 mt-2" // スタイル調整
+              >
+                <DropdownMenu.Label className="text-sm font-medium text-gray-700">
+                  マイアカウント
+                </DropdownMenu.Label>
+                <DropdownMenu.Separator className="my-2" />
                 <DropdownMenu.Item asChild>
                   <Link
                     href={`/user/${userId}/profile`}
-                    className="cursor-pointer"
+                    className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded"
                   >
-                    <User className="mr-2 h-4 w-4" />
+                    <User className="h-4 w-4 text-gray-500" />
                     <span>プロフィール</span>
                   </Link>
                 </DropdownMenu.Item>
                 <DropdownMenu.Item asChild>
                   <Link
                     href={`/src/app/user/learning-record`}
-                    className="cursor-pointer"
+                    className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded"
                   >
-                    <Settings className="mr-2 h-4 w-4" />
+                    <Settings className="h-4 w-4 text-gray-500" />
                     <span>学習記録</span>
                   </Link>
                 </DropdownMenu.Item>
-                <DropdownMenu.Separator />
+                <DropdownMenu.Separator className="my-2" />
                 <DropdownMenu.Item
                   onClick={handleLogout}
-                  className="cursor-pointer"
+                  className="flex items-center space-x-2 p-2 text-red-500 hover:bg-gray-100 rounded"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut className="h-4 w-4 text-red-500" />
                   <span>ログアウト</span>
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
