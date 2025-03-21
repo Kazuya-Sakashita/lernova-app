@@ -95,7 +95,21 @@ export function AppHeader() {
                 >
                   <Avatar.Root>
                     <Avatar.Image src="/placeholder.svg" alt="ユーザー" />
-                    <Avatar.Fallback>ユ</Avatar.Fallback>
+                    <Avatar.Fallback
+                      style={{
+                        backgroundColor: "#FF66B2", // アプリのメインカラー（ピンク）
+                        color: "white",
+                        fontSize: "14px", // フォントサイズ調整
+                        borderRadius: "50%", // サークルにするためにborder-radiusを50%に設定
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        height: "2.5rem", // サイズ調整（高さ）
+                        width: "2.5rem", // サイズ調整（幅）
+                      }}
+                    >
+                      {user?.nickname || "ユーザー"}
+                    </Avatar.Fallback>
                   </Avatar.Root>
                 </Button>
               </DropdownMenu.Trigger>
