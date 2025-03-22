@@ -13,3 +13,14 @@ export type SignUpFormData = {
   password: string;
   confirmPassword: string;
 };
+
+// 学習記録に関連する型
+export type LearningRecord = {
+  id: string;
+  title: string;
+  date: Date;
+  startTime: string;
+  endTime: string;
+  duration: string;
+  content: string;
+};
