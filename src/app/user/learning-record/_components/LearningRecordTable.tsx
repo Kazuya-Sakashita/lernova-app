@@ -70,17 +70,19 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
               {/* アクションセル - 編集と削除ボタン */}
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
-                  {/* 編集ボタン */}
+                  {/* 編集ボタン：青系 */}
                   <ActionButton
                     onClick={() => {}}
                     icon={<Edit className="h-4 w-4" />}
                     label="編集"
+                    variant="outline" // 編集ボタンにはoutlineスタイル
                   />
-                  {/* 削除ボタン */}
+                  {/* 削除ボタン：赤系 */}
                   <ActionButton
                     onClick={() => handleDeleteRecord(record.id)} // 削除処理を呼び出す
                     icon={<Trash className="h-4 w-4" />}
                     label="削除"
+                    variant="destructive" // 削除ボタンにはdestructiveスタイル
                   />
                 </div>
               </TableCell>
