@@ -12,6 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@ui/select";
+import { useSession } from "@/app/_hooks/useSupabaseSession";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 type FormData = {
   first_name: string;
@@ -24,7 +27,8 @@ type FormData = {
   socialLinks: string;
 };
 
-// TODO デザイン、コンポーネントか含め、別途修正予定
+// TODO デザインなどは、別途修正。ログインなしにアクセスできるのかの確認用
+
 export default function ProfileRegistrationPage() {
   const {
     register,
@@ -32,11 +36,30 @@ export default function ProfileRegistrationPage() {
     formState: { errors },
     setValue,
   } = useForm<FormData>();
+  const { session, token, isLoading } = useSession(); // sessionとtokenを取得
+  const router = useRouter(); // useRouterを直接使用
+
+  // ページロード時にトークンを確認
+  useEffect(() => {
+    if (isLoading) return; // ローディング中は何もしない
+
+    if (!token || !session) {
+      router.push("/"); // トークンが無い、またはセッションが無ければリダイレクト
+    }
+  }, [token, isLoading, session, router]);
 
   const onSubmit = (data: FormData) => {
     console.log("プロフィールデータ:", data);
     // プロフィール登録ロジックをここに追加
   };
+
+  if (isLoading) {
+    return <div>ログイン状態を確認しています...</div>; // ローディング中はメッセージを表示
+  }
+
+  if (!token || !session) {
+    return <div>トークンが無効です。ログインしてください。</div>; // トークンが無い場合にメッセージ表示
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">

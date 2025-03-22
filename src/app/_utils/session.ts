@@ -38,6 +38,7 @@ const fetchUserData = async () => {
     const isAdmin = roleData?.role_name === "admin";
 
     return {
+      session,
       email: user.email,
       id: user.id,
       nickname: data?.nickname || user.email,
@@ -60,6 +61,7 @@ export const useSession = () => {
 
   // isLoadingとisErrorをSWRで提供される情報をそのまま使用
   return {
+    session: data?.session,
     user: data,
     token: data?.token, // トークンも返す
     isLoading: !data && !error, // ローディング状態
