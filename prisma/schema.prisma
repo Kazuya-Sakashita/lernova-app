@@ -22,7 +22,7 @@ model Role {
 
 model User {
   id            Int      @id @default(autoincrement())
-  supabaseUserId String   @db.VarChar(255)
+  supabaseUserId String   @db.VarChar(255) @unique  // supabaseUserId に @unique 属性を追加
   roleId        Int
   nickname      String
   role          Role     @relation(fields: [roleId], references: [id])
@@ -34,7 +34,7 @@ model User {
 
 model Profile {
   id             Int      @id @default(autoincrement())
-  userId         Int     @unique
+  supabaseUserId String   @db.VarChar(255) @unique  // supabaseUserId に @unique 属性を追加
   first_name     String
   last_name      String
   date_of_birth  DateTime
@@ -43,21 +43,21 @@ model Profile {
   bio            String
   phoneNumber    String
   socialLinks    String
-  user           User     @relation(fields: [userId], references: [id])
+  user           User     @relation(fields: [supabaseUserId], references: [supabaseUserId])
 }
 
-model LearningRecord {
-  id          Int       @id @default(autoincrement())
-  userId      Int
-  categoryId  Int
-  title       String
-  content     String
-  start_time  DateTime
-  end_time    DateTime
-  duration    Float
-  learning_date DateTime
-  user        User      @relation(fields: [userId], references: [id])
-  category    Category  @relation(fields: [categoryId], references: [id])
+model Follower {
+  id             Int       @id @default(autoincrement())
+  followerId     Int
+  followedId     Int
+  follower       User      @relation("follower", fields: [followerId], references: [id])
+  followed       User      @relation("followed", fields: [followedId], references: [id])
+}
+
+model Category {
+  id               Int        @id @default(autoincrement())
+  category_name    String
+  learningRecords  LearningRecord[]
   learningRecordCategories LearningRecordCategory[]
 }
 
@@ -69,17 +69,17 @@ model LearningRecordCategory {
   category       Category   @relation(fields: [categoryId], references: [id])
 }
 
-model Category {
-  id               Int        @id @default(autoincrement())
-  category_name    String
-  learningRecords  LearningRecord[]
+model LearningRecord {
+  id            Int       @id @default(autoincrement())
+  supabaseUserId String  @db.VarChar(255)
+  categoryId    Int
+  title         String
+  content       String
+  start_time    DateTime
+  end_time      DateTime
+  duration      Float
+  learning_date DateTime
+  user          User      @relation(fields: [supabaseUserId], references: [supabaseUserId])
+  category      Category @relation(fields: [categoryId], references: [id])
   learningRecordCategories LearningRecordCategory[]
-}
-
-model Follower {
-  id             Int       @id @default(autoincrement())
-  followerId     Int
-  followedId     Int
-  follower       User      @relation("follower", fields: [followerId], references: [id])
-  followed       User      @relation("followed", fields: [followedId], references: [id])
 }
