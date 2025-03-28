@@ -41,7 +41,7 @@ async function main() {
   // 学習記録の作成
   await prisma.learningRecord.create({
     data: {
-      userId: user.id,
+      supabaseUserId: user.supabaseUserId, // supabaseUserId を使用
       categoryId: category.id,
       title: "Prisma Basics",
       content: "Learning how to use Prisma ORM",
