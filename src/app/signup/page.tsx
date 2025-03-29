@@ -18,8 +18,6 @@ export default function SignUpPage() {
   } = useForm<SignUpFormData>();
 
   const onSubmit = async (data: SignUpFormData) => {
-    console.log("SignUp Data: ", data); // フォーム送信時にデータを表示
-
     const { email, password, nickname } = data;
 
     // Supabase 認証のサインアップ
@@ -28,7 +26,7 @@ export default function SignUpPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `http://localhost:3000/login`,
+          emailRedirectTo: `http://localhost:3000/login`, // メール確認後のリダイレクトURL
         },
       }
     );
@@ -43,6 +41,7 @@ export default function SignUpPage() {
       const user = signUpData?.user; // auth.users からユーザーを取得
       console.log("User created: ", user); // ユーザー情報の確認用ログ
 
+      // サインアップが成功した場合、Userテーブルにニックネームを保存
       if (user) {
         // ユーザー情報をサーバーサイドで保存するAPIを呼び出す
         const response = await fetch("/api/users", {
@@ -53,12 +52,14 @@ export default function SignUpPage() {
           body: JSON.stringify({
             email,
             nickname,
-            user_id: user.id, // SupabaseのユーザーID
+            supabaseUserId: user.id, // supabaseUserIdを追加
           }),
         });
 
         if (response.ok) {
-          alert("確認メールを送信しました。");
+          alert(
+            "確認メールを送信しました。メールを確認して、リンクをクリックしてください。"
+          );
         } else {
           console.error("ユーザー情報の保存に失敗しました");
         }
