@@ -39,11 +39,9 @@ export default function LoginPage() {
       console.log("認証エラー:", authError.message); // エラー時にエラーメッセージをログに出力
       setError(authError.message); // エラーメッセージを設定
 
-      // Email not confirmedエラーの場合にアラート表示
+      // Email not confirmedエラーの場合に再送信ボタン表示
       if (authError.message === "Email not confirmed") {
-        alert(
-          "認証エラー: メールアドレスが未確認です。確認メールを開封してください。"
-        );
+        setError("メールアドレスが未確認です。確認メールを開封してください。");
       }
 
       return null;
@@ -63,12 +61,12 @@ export default function LoginPage() {
 
   // 確認メールを再送信する関数
   const resendVerificationEmail = async () => {
-    const email = getValues("email"); // getValues でフォームのメールアドレスを取得
+    const email = getValues("email"); // フォームからメールアドレスを取得
 
-    // 確認メールを再送信する
+    // 確認メールを再送信するために、仮のパスワードを使ってsignUpを呼び出す
     const { error } = await supabase.auth.signUp({
       email,
-      password: "", // パスワードは空でOK
+      password: "temporarypassword", // 仮のパスワードを設定（実際には変更されません）
     });
 
     if (error) {
