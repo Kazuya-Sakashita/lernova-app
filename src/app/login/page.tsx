@@ -8,21 +8,25 @@ import { Label } from "@ui/label"; // ラベルコンポーネントのインポ
 import { Button } from "@ui/button"; // ボタンコンポーネントのインポート
 import { Input } from "@ui/input"; // 入力フォームコンポーネントのインポート
 import Link from "next/link"; // リンクコンポーネントのインポート
-import { LoginFormData } from "@/app/_types/formTypes"; // フォームデータの型定義}
-import AppLogoLink from "../_components/AppLogoLink";
+import { LoginFormData } from "@/app/_types/formTypes"; // フォームデータの型定義
+import AppLogoLink from "../_components/AppLogoLink"; // アプリロゴリンクのコンポーネント
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null); // エラーメッセージの状態管理
+  const [emailSent, setEmailSent] = useState<boolean>(false); // 確認メール送信状態
   const router = useRouter(); // useRouterフックを使用してページ遷移
 
   const {
     register,
     handleSubmit,
-    formState: { errors }, // フォームエラーの状態を管理
+    formState: { errors },
+    getValues, // getValues をインポートしてフォームの値を取得
   } = useForm<LoginFormData>(); // react-hook-formのuseFormフック
 
   // ログイン処理
   const handleLogin = async (email: string, password: string) => {
+    console.log("ログイン処理開始", { email }); // ログイン開始時にemailをログに出力
+
     // supabaseのサインイン処理
     const { data: userData, error: authError } =
       await supabase.auth.signInWithPassword({
@@ -32,16 +36,44 @@ export default function LoginPage() {
 
     // 認証エラーがある場合
     if (authError) {
+      console.log("認証エラー:", authError.message); // エラー時にエラーメッセージをログに出力
       setError(authError.message); // エラーメッセージを設定
+
+      // Email not confirmedエラーの場合に再送信ボタン表示
+      if (authError.message === "Email not confirmed") {
+        setError("メールアドレスが未確認です。確認メールを開封してください。");
+      }
+
       return null;
     }
 
     // ユーザーが確認されている場合、ユーザー情報を返す
     if (userData?.user?.confirmed_at) {
+      console.log("ログイン成功:", userData.user); // ユーザー情報をログに出力
+      setError(null); // ログイン成功時にエラーメッセージをクリア
       return userData.user;
     } else {
+      console.log("未確認のメールアドレス"); // メール未確認時にログに出力
       setError("メールアドレスが未確認です。確認メールを開封してください。"); // メール確認を促すエラー
       return null;
+    }
+  };
+
+  // 確認メールを再送信する関数
+  const resendVerificationEmail = async () => {
+    const email = getValues("email"); // フォームからメールアドレスを取得
+
+    // 確認メールを再送信するために、仮のパスワードを使ってsignUpを呼び出す
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: "temporarypassword", // 仮のパスワードを設定（実際には変更されません）
+    });
+
+    if (error) {
+      alert("確認メールの再送信に失敗しました: " + error.message);
+    } else {
+      setEmailSent(true); // 再送信後に状態を更新
+      alert("確認メールを再送信しました。");
     }
   };
 
@@ -52,7 +84,7 @@ export default function LoginPage() {
 
     // ログイン成功時、ホームページにリダイレクト
     if (user) {
-      router.push("/");
+      router.push("/"); // ログイン成功後、ホームページにリダイレクト
     }
   };
 
@@ -102,7 +134,6 @@ export default function LoginPage() {
               <p className="text-sm text-red-500">{errors.email.message}</p> // エラーメッセージ表示
             )}
           </div>
-
           {/* パスワード入力フォーム */}
           <div className="space-y-1">
             <Label htmlFor="password">パスワード</Label>
@@ -123,9 +154,28 @@ export default function LoginPage() {
               <p className="text-sm text-red-500">{errors.password.message}</p> // エラーメッセージ表示
             )}
           </div>
-
           {/* エラーメッセージ */}
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-sm">{error}</p>}{" "}
+          {/* 認証エラーを表示 */}
+          {/* メール確認再送信ボタン */}
+          {error &&
+            error ===
+              "メールアドレスが未確認です。確認メールを開封してください。" && (
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  onClick={resendVerificationEmail} // 再メール送信
+                  className="w-full bg-pink-500 text-white hover:bg-pink-600"
+                >
+                  確認メールを再送信
+                </Button>
+                {emailSent && (
+                  <p className="text-green-500 text-sm mt-2">
+                    確認メールを再送信しました。
+                  </p>
+                )}
+              </div>
+            )}
         </div>
 
         <Button

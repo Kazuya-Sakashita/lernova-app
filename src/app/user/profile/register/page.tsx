@@ -39,6 +39,8 @@ export default function ProfileRegistrationPage() {
   const { session, token, isLoading } = useSession(); // sessionとtokenを取得
   const router = useRouter(); // useRouterを直接使用
 
+  console.log("セッション:", session); // セッション情報をログに出力
+
   // ページロード時にトークンを確認
   useEffect(() => {
     if (isLoading) return; // ローディング中は何もしない
