@@ -3,11 +3,11 @@ import { prisma } from "@/app/_utils/prisma";
 
 export async function POST(request: Request) {
   try {
-    const { nickname, user_id } = await request.json();
+    const { nickname, supabaseUserId } = await request.json();
 
     const newUser = await prisma.user.create({
       data: {
-        supabaseUserId: user_id, // SupabaseのユーザーID
+        supabaseUserId, // SupabaseのユーザーID
         nickname: nickname, // フォームからのニックネーム
         roleId: 1, // デフォルトでroleId 1
       },
