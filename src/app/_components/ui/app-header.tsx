@@ -35,7 +35,6 @@ export function AppHeader() {
   }
 
   const isLoggedIn = user?.email ? true : false;
-  const userId = user?.id ?? null;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -127,7 +126,7 @@ export function AppHeader() {
                 <DropdownMenu.Separator className="my-2" />
                 <DropdownMenu.Item asChild>
                   <Link
-                    href={`/user/${userId}/profile`}
+                    href={`/user/profile/register`}
                     className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded"
                   >
                     <User className="h-4 w-4 text-gray-500" />
