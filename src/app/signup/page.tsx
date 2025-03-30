@@ -44,7 +44,7 @@ export default function SignUpPage() {
       // サインアップが成功した場合、Userテーブルにニックネームを保存
       if (user) {
         // ユーザー情報をサーバーサイドで保存するAPIを呼び出す
-        const response = await fetch("/api/users", {
+        const response = await fetch("/api/user", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -14,21 +14,14 @@ import {
   CardTitle,
 } from "@/app/_components/ui/card";
 
-// 学習記録の型定義
-interface LearningRecord {
-  id: string;
-  title: string;
-  date: Date;
-  startTime: string;
-  endTime: string;
-  duration: string;
-  content: string;
-}
+import { LearningRecord } from "@/app/_types/formTypes";
 
 // 仮の学習記録データ
 const initialRecords: LearningRecord[] = [
   {
     id: "1",
+    supabaseUserId: "sampleUserId",
+    categoryId: "1",
     title: "CSS Grid レイアウト",
     date: new Date("2023-03-18"),
     startTime: "15:00",
@@ -38,6 +31,8 @@ const initialRecords: LearningRecord[] = [
   },
   {
     id: "2",
+    supabaseUserId: "sampleUserId",
+    categoryId: "1",
     title: "TypeScript 基礎",
     date: new Date("2023-03-17"),
     startTime: "10:00",
@@ -47,6 +42,8 @@ const initialRecords: LearningRecord[] = [
   },
   {
     id: "3",
+    supabaseUserId: "sampleUserId",
+    categoryId: "1",
     title: "Next.js ルーティング",
     date: new Date("2023-03-16"),
     startTime: "14:00",
@@ -56,6 +53,8 @@ const initialRecords: LearningRecord[] = [
   },
   {
     id: "4",
+    supabaseUserId: "sampleUserId",
+    categoryId: "1",
     title: "React Hooks",
     date: new Date("2023-03-15"),
     startTime: "09:00",

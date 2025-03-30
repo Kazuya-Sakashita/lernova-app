@@ -135,7 +135,7 @@ export function AppHeader() {
                 </DropdownMenu.Item>
                 <DropdownMenu.Item asChild>
                   <Link
-                    href={`/src/app/user/learning-record`}
+                    href={`/user/learning-record`}
                     className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded"
                   >
                     <Settings className="h-4 w-4 text-gray-500" />

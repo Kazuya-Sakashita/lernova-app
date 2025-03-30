@@ -92,15 +92,15 @@ export function AppSidebar() {
       { href: "/", icon: Home, label: "ホーム" },
       { href: "/learning-support", icon: BookOpen, label: "学習サポート概要" },
       {
-        href: `/user/${userId}/learning-record/time-input`,
+        href: `/user/learning-record/time-input`,
         icon: PlusCircle,
         label: "学習を記録",
       },
     ],
     learningManagement: [
-      { href: `/src/app/user/learning-record`, icon: Clock, label: "学習記録" },
+      { href: `/user/learning-record`, icon: Clock, label: "学習記録" },
       {
-        href: `/user/${userId}/learning-history`,
+        href: `/user/learning-history`,
         icon: History,
         label: "学習履歴",
       },
@@ -109,7 +109,7 @@ export function AppSidebar() {
     community: [
       { href: "/blog/success-stories", icon: Award, label: "成功事例" },
       {
-        href: `/user/${userId}/follow/share-record`,
+        href: `/user/follow/share-record`,
         icon: Heart,
         label: "学習記録共有",
       },

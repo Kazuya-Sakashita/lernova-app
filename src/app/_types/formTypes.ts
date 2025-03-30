@@ -16,6 +16,8 @@ export type SignUpFormData = {
 
 // 学習記録に関連する型
 export type LearningRecord = {
+  supabaseUserId: string;
+  categoryId: string;
   id: string;
   title: string;
   date: Date;
