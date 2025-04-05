@@ -26,7 +26,7 @@ export default function SignUpPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `http://localhost:3000/login`, // メール確認後のリダイレクトURL
+          emailRedirectTo: `http://localhost:3000/`, // メール確認後のリダイレクトURL
         },
       }
     );

@@ -1,27 +1,66 @@
-import { NextApiRequest, NextApiResponse } from "next";
-import { supabase } from "@utils/supabase"; // Supabaseのクライアントをインポート
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/app/_utils/prisma";
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  const token = req.headers["authorization"]?.split("Bearer ")[1]; // Authorizationヘッダーからトークンを取得
-
-  if (!token) {
-    return res.status(401).json({ message: "トークンがありません" }); // トークンがない場合
-  }
-
+export async function POST(req: NextRequest) {
   try {
-    // Supabaseでトークンを検証
-    const { data, error } = await supabase.auth.getUser(token);
+    const body = await req.json();
+    const {
+      supabaseUserId,
+      first_name,
+      last_name,
+      gender,
+      bio,
+      phoneNumber,
+      socialLinks,
+      profile_picture,
+      date_of_birth, // 誕生日を受け取る
+    } = body;
 
-    if (error || !data) {
-      return res.status(401).json({ message: "トークンが無効です" }); // トークンが無効な場合
-    }
+    console.log("受け取ったデータ:", body);
 
-    // トークンが有効な場合
-    res.status(200).json({ user: data });
+    const userObject = await prisma.user.findUnique({
+      where: { supabaseUserId },
+    });
+    console.log("userObject:", userObject);
+
+    // 誕生日が undefined または null の場合、本日の日付を設定
+    const dateOfBirth = date_of_birth ? new Date(date_of_birth) : new Date();
+
+    const profile = await prisma.profile.upsert({
+      where: { supabaseUserId },
+      update: {
+        first_name,
+        last_name,
+        gender,
+        bio,
+        phoneNumber,
+        socialLinks,
+        profile_picture,
+        // 誕生日が null または undefined の場合、現在の日付を設定
+        date_of_birth: dateOfBirth, // 本日の日付を設定
+      },
+      create: {
+        supabaseUserId,
+        first_name,
+        last_name,
+        gender,
+        bio,
+        phoneNumber,
+        socialLinks,
+        profile_picture,
+        // 新規作成時にも誕生日が未指定の場合、本日の日付を設定
+        date_of_birth: dateOfBirth, // 本日の日付を設定
+      },
+    });
+
+    console.log("プロフィールが正常に保存されました:", profile);
+
+    return NextResponse.json(profile, { status: 200 });
   } catch (error) {
-    return res.status(500).json({ message: "サーバーエラー", error });
+    console.error("プロフィール保存エラー:", error);
+    return NextResponse.json(
+      { message: "プロフィール保存に失敗しました" },
+      { status: 500 }
+    );
   }
 }
