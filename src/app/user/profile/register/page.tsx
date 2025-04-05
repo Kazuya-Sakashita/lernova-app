@@ -35,6 +35,7 @@ import { Upload } from "lucide-react";
 import { Separator } from "@ui/separator";
 import { Textarea } from "@ui/textarea";
 import { useSession } from "@/app/_utils/session"; // SWRからセッション情報を取得
+import useUserProfile from "@/app/user/profile/_hooks/useUserProfile"; // useUserProfile フックをインポート
 
 const formSchema = z.object({
   nickname: z
@@ -77,27 +78,44 @@ export default function ProfileForm() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useSession();
+  const { profileData, isLoading } = useUserProfile(); // useUserProfile フックを使用
+  console.log("ProfileForm内のprofileData:", profileData);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      nickname: user?.nickname || "",
-      first_name: "",
-      last_name: "",
-      gender: "",
-      bio: "",
-      phoneNumber: "",
-      socialLinks: "",
-      pushNotifications: false,
-      date_of_birth: "",
+      nickname: profileData?.nickname || "",
+      first_name: profileData?.first_name || "",
+      last_name: profileData?.last_name || "",
+      gender: profileData?.gender || "",
+      bio: profileData?.bio || "",
+      phoneNumber: profileData?.phoneNumber || "",
+      socialLinks: profileData?.socialLinks || "",
+      pushNotifications: profileData?.pushNotifications || false,
+      date_of_birth: profileData?.date_of_birth || "",
     },
   });
 
   useEffect(() => {
-    if (user) {
-      form.setValue("nickname", user.nickname);
+    if (profileData) {
+      form.setValue("nickname", profileData.nickname || "");
+      form.setValue("first_name", profileData.first_name || "");
+      form.setValue("last_name", profileData.last_name || "");
+      form.setValue("gender", profileData.gender || "");
+      form.setValue("bio", profileData.bio || "");
+      form.setValue("phoneNumber", profileData.phoneNumber || "");
+      form.setValue("socialLinks", profileData.socialLinks || "");
+      form.setValue(
+        "date_of_birth",
+        profileData.date_of_birth
+          ? new Date(profileData.date_of_birth).toISOString().split("T")[0]
+          : ""
+      );
+      if (profileData.profile_picture) {
+        setProfileImage(profileData.profile_picture); // プロフィール画像の設定
+      }
     }
-  }, [user, form]);
+  }, [profileData, form]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -133,6 +151,7 @@ export default function ProfileForm() {
           socialLinks: data.socialLinks,
           profile_picture: finalProfileImage,
           date_of_birth: data.date_of_birth, // 誕生日を送信
+          nickname: data.nickname, // ニックネームも送信
         }),
       });
 
@@ -149,6 +168,10 @@ export default function ProfileForm() {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <Card className="w-full max-w-4xl mx-auto bg-white shadow-lg rounded-lg">
@@ -284,7 +307,7 @@ export default function ProfileForm() {
                       <FormLabel className="text-pink-600">性別</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        defaultValue={profileData?.gender || ""}
                       >
                         <FormControl>
                           <SelectTrigger className="border-pink-600 text-gray-700 focus:ring-pink-500">
@@ -316,6 +339,13 @@ export default function ProfileForm() {
                         <Input
                           type="date"
                           {...field}
+                          defaultValue={
+                            profileData?.date_of_birth
+                              ? new Date(profileData.date_of_birth)
+                                  .toISOString()
+                                  .split("T")[0] // Date オブジェクトを "YYYY-MM-DD" 形式に変換
+                              : "" // データがない場合は空文字
+                          }
                           className="border-pink-600 text-gray-700 focus:ring-pink-500"
                         />
                       </FormControl>

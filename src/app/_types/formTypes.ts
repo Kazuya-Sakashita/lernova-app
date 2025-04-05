@@ -26,3 +26,16 @@ export type LearningRecord = {
   duration: string;
   content: string;
 };
+
+export type UserProfile = {
+  nickname: string;
+  first_name: string;
+  last_name: string;
+  gender?: string;
+  bio?: string;
+  phoneNumber?: string;
+  socialLinks?: string;
+  pushNotifications: boolean;
+  date_of_birth?: string;
+  profile_picture?: string;
+};
