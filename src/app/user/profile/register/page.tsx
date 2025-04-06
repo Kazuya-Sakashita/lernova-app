@@ -37,6 +37,7 @@ import { Textarea } from "@ui/textarea";
 import { useSession } from "@/app/_utils/session"; // SWRからセッション情報を取得
 import useUserProfile from "@/app/user/profile/_hooks/useUserProfile"; // useUserProfile フックをインポート
 
+// フォームのバリデーションスキーマ
 const formSchema = z.object({
   nickname: z
     .string()
@@ -72,6 +73,7 @@ const formSchema = z.object({
     .optional(),
 });
 
+// フォームの値の型
 type FormValues = z.infer<typeof formSchema>;
 
 export default function ProfileForm() {
@@ -79,10 +81,9 @@ export default function ProfileForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useSession();
   const { profileData, isLoading } = useUserProfile(); // useUserProfile フックを使用
-  console.log("ProfileForm内のprofileData:", profileData);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema), // Zodを使ってバリデーション
     defaultValues: {
       nickname: profileData?.nickname || "",
       first_name: profileData?.first_name || "",
@@ -96,6 +97,7 @@ export default function ProfileForm() {
     },
   });
 
+  // ユーザープロフィールデータのセット
   useEffect(() => {
     if (profileData) {
       form.setValue("nickname", profileData.nickname || "");
@@ -117,6 +119,7 @@ export default function ProfileForm() {
     }
   }, [profileData, form]);
 
+  // プロフィール画像のアップロード処理
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -128,6 +131,7 @@ export default function ProfileForm() {
     }
   };
 
+  // フォーム送信処理
   const handleSubmit = async (data: FormValues & { profileImage?: string }) => {
     setIsSubmitting(true);
     const token = user?.token;
@@ -150,8 +154,8 @@ export default function ProfileForm() {
           phoneNumber: data.phoneNumber,
           socialLinks: data.socialLinks,
           profile_picture: finalProfileImage,
-          date_of_birth: data.date_of_birth, // 誕生日を送信
-          nickname: data.nickname, // ニックネームも送信
+          date_of_birth: data.date_of_birth,
+          nickname: data.nickname,
         }),
       });
 
@@ -226,7 +230,7 @@ export default function ProfileForm() {
               </div>
 
               <div className="flex-1 space-y-4 w-full">
-                {/* ニックネーム */}
+                {/* フォーム項目: ニックネーム */}
                 <FormField
                   control={form.control}
                   name="nickname"
@@ -338,14 +342,7 @@ export default function ProfileForm() {
                       <FormControl>
                         <Input
                           type="date"
-                          {...field}
-                          defaultValue={
-                            profileData?.date_of_birth
-                              ? new Date(profileData.date_of_birth)
-                                  .toISOString()
-                                  .split("T")[0] // Date オブジェクトを "YYYY-MM-DD" 形式に変換
-                              : "" // データがない場合は空文字
-                          }
+                          {...field} // formにバインディングされたvalueとonChangeが自動的に適用されます
                           className="border-pink-600 text-gray-700 focus:ring-pink-500"
                         />
                       </FormControl>
