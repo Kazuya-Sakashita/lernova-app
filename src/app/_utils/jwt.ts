@@ -11,9 +11,13 @@ export const generateToken = (userId: string) => {
 // JWTトークンを検証する関数
 export const verifyToken = (token: string) => {
   try {
-    return jwt.verify(token, SECRET_KEY); // トークンを検証してデコード
+    // トークンを検証してデコード
+    const decoded = jwt.verify(token, SECRET_KEY);
+    console.log("Decoded JWT:", decoded); // トークンが検証された場合、デコード結果を出力
+    return decoded;
   } catch (error) {
-    console.error("JWTトークン検証エラー:", error); // エラーメッセージをログに出力
+    // エラーが発生した場合、詳細なエラーメッセージを出力
+    console.error("JWTトークン検証エラー:", error);
     return null; // 無効なトークンの場合はnullを返す
   }
 };

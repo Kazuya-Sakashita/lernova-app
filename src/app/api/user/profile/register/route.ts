@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_utils/prisma";
+import { authenticateUser } from "@/app/_utils/authenticateUser";
 
 export async function POST(req: NextRequest) {
+  const authError = await authenticateUser(req);
+  if (authError) {
+    return authError; // 認証に失敗した場合はエラーを返す
+  }
+
   try {
     const body = await req.json();
     const {
@@ -13,8 +19,8 @@ export async function POST(req: NextRequest) {
       phoneNumber,
       socialLinks,
       profile_picture,
-      date_of_birth, // 誕生日を受け取る
-      nickname, // ニックネームも受け取る
+      date_of_birth,
+      nickname,
     } = body;
 
     console.log("受け取ったデータ:", body);
