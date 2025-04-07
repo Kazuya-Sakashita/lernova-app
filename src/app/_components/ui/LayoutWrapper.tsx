@@ -15,7 +15,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
           <div className="hidden md:block">
             <AppSidebar />
           </div>
-          <main className="flex-1 p-2 sm:p-4 md:ml-64 pt-6">{children}</main>
+          <main className="flex-1 p-2 sm:p-4 pt-6">{children}</main>
         </div>
       </div>
     </SidebarProvider>

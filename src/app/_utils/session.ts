@@ -2,7 +2,6 @@ import useSWR, { mutate } from "swr";
 import { supabase } from "./supabase";
 
 // ユーザー情報を取得するためのfetcher関数
-// ユーザー情報を取得するためのfetcher関数
 const fetchUserData = async () => {
   const {
     data: { session },
@@ -16,7 +15,7 @@ const fetchUserData = async () => {
     // 'User'テーブルからニックネームとroleIdを取得
     const { data, error } = await supabase
       .from("User")
-      .select("nickname, roleId")
+      .select("nickname, roleId, supabaseUserId") // supabaseUserIdも取得
       .eq("supabaseUserId", user.id); // supabaseUserId を使って検索
 
     if (error) {
@@ -54,6 +53,7 @@ const fetchUserData = async () => {
       session,
       email: user.email,
       id: user.id,
+      supabaseUserId: userData?.supabaseUserId, // supabaseUserId を追加
       nickname: userData?.nickname || user.email, // nicknameがない場合はemailを使用
       isAdmin,
       token: session.access_token, // トークンを返す
@@ -78,6 +78,7 @@ export const useSession = () => {
     session: data?.session,
     user: data,
     token: data?.token, // トークンも返す
+    supabaseUserId: data?.supabaseUserId, // supabaseUserIdを追加
     isLoading: !data && !error, // ローディング状態
     isError: error, // エラー状態
     handleLogout, // ログアウト関数

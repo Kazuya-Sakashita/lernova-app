@@ -26,7 +26,7 @@ export default function SignUpPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `http://localhost:3000/login`, // メール確認後のリダイレクトURL
+          emailRedirectTo: `http://localhost:3000/`, // メール確認後のリダイレクトURL
         },
       }
     );
@@ -44,7 +44,7 @@ export default function SignUpPage() {
       // サインアップが成功した場合、Userテーブルにニックネームを保存
       if (user) {
         // ユーザー情報をサーバーサイドで保存するAPIを呼び出す
-        const response = await fetch("/api/users", {
+        const response = await fetch("/api/user", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -81,7 +81,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* アプリロゴ */}
       <AppLogoLink
         href="/" // リンク先

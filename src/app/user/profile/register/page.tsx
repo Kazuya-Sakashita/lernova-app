@@ -1,10 +1,28 @@
 "use client";
-
+// TODO リファクタリング必要
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@ui/button";
 import { Input } from "@ui/input";
-import { Label } from "@ui/label";
-import { Textarea } from "@ui/textarea";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@ui/card";
 import {
   Select,
   SelectContent,
@@ -12,200 +30,415 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@ui/select";
-import { useSession } from "@/app/_hooks/useSupabaseSession";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Avatar, AvatarImage, AvatarFallback } from "@ui/avatar";
+import { Upload } from "lucide-react";
+import { Separator } from "@ui/separator";
+import { Textarea } from "@ui/textarea";
+import { useSession } from "@/app/_utils/session"; // SWRからセッション情報を取得
+import useUserProfile from "@/app/user/profile/_hooks/useUserProfile"; // useUserProfile フックをインポート
 
-type FormData = {
-  first_name: string;
-  last_name: string;
-  date_of_birth: string;
-  gender: string;
-  profile_picture: string;
-  bio: string;
-  phoneNumber: string;
-  socialLinks: string;
-};
+// フォームのバリデーションスキーマ
+const formSchema = z.object({
+  nickname: z
+    .string()
+    .min(2, { message: "ニックネームは2文字以上である必要があります" })
+    .max(50, { message: "ニックネームは50文字以下である必要があります" }),
+  first_name: z
+    .string()
+    .min(2, { message: "名は2文字以上である必要があります" })
+    .max(50, { message: "名は50文字以下である必要があります" }),
+  last_name: z
+    .string()
+    .min(2, { message: "姓は2文字以上である必要があります" })
+    .max(50, { message: "姓は50文字以下である必要があります" }),
+  gender: z.string().optional(), // 性別はオプショナル
+  bio: z
+    .string()
+    .max(500, { message: "自己紹介は500文字以下である必要があります" })
+    .optional(),
+  phoneNumber: z
+    .string()
+    .max(15, { message: "電話番号は15文字以内である必要があります" })
+    .optional(),
+  socialLinks: z
+    .string()
+    .max(255, { message: "SNSリンクは255文字以内である必要があります" })
+    .optional(),
+  pushNotifications: z.boolean().default(false),
+  date_of_birth: z
+    .string()
+    .refine((val) => !isNaN(Date.parse(val)), {
+      message: "誕生日を正しい日付形式で入力してください。",
+    })
+    .optional(),
+});
 
-// TODO デザインなどは、別途修正。ログインなしにアクセスできるのかの確認用
+// フォームの値の型
+type FormValues = z.infer<typeof formSchema>;
 
-export default function ProfileRegistrationPage() {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-  } = useForm<FormData>();
-  const { session, token, isLoading } = useSession(); // sessionとtokenを取得
-  const router = useRouter(); // useRouterを直接使用
+export default function ProfileForm() {
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useSession();
+  const { profileData, isLoading } = useUserProfile(); // useUserProfile フックを使用
 
-  console.log("セッション:", session); // セッション情報をログに出力
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema), // Zodを使ってバリデーション
+    defaultValues: {
+      nickname: profileData?.nickname || "",
+      first_name: profileData?.first_name || "",
+      last_name: profileData?.last_name || "",
+      gender: profileData?.gender || "",
+      bio: profileData?.bio || "",
+      phoneNumber: profileData?.phoneNumber || "",
+      socialLinks: profileData?.socialLinks || "",
+      pushNotifications: profileData?.pushNotifications || false,
+      date_of_birth: profileData?.date_of_birth || "",
+    },
+  });
 
-  // ページロード時にトークンを確認
+  // ユーザープロフィールデータのセット
   useEffect(() => {
-    if (isLoading) return; // ローディング中は何もしない
-
-    if (!token || !session) {
-      router.push("/"); // トークンが無い、またはセッションが無ければリダイレクト
+    if (profileData) {
+      form.setValue("nickname", profileData.nickname || "");
+      form.setValue("first_name", profileData.first_name || "");
+      form.setValue("last_name", profileData.last_name || "");
+      form.setValue("gender", profileData.gender || "");
+      form.setValue("bio", profileData.bio || "");
+      form.setValue("phoneNumber", profileData.phoneNumber || "");
+      form.setValue("socialLinks", profileData.socialLinks || "");
+      form.setValue(
+        "date_of_birth",
+        profileData.date_of_birth
+          ? new Date(profileData.date_of_birth).toISOString().split("T")[0]
+          : ""
+      );
+      if (profileData.profile_picture) {
+        setProfileImage(profileData.profile_picture); // プロフィール画像の設定
+      }
     }
-  }, [token, isLoading, session, router]);
+  }, [profileData, form]);
 
-  const onSubmit = (data: FormData) => {
-    console.log("プロフィールデータ:", data);
-    // プロフィール登録ロジックをここに追加
+  // プロフィール画像のアップロード処理
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfileImage(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // フォーム送信処理
+  const handleSubmit = async (data: FormValues & { profileImage?: string }) => {
+    setIsSubmitting(true);
+    const token = user?.token;
+    const supabaseUserId = user?.id;
+    const finalProfileImage = profileImage || "";
+
+    try {
+      const res = await fetch("/api/user/profile/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({
+          supabaseUserId: supabaseUserId,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          gender: data.gender,
+          bio: data.bio,
+          phoneNumber: data.phoneNumber,
+          socialLinks: data.socialLinks,
+          profile_picture: finalProfileImage,
+          date_of_birth: data.date_of_birth,
+          nickname: data.nickname,
+        }),
+      });
+
+      if (!res.ok) {
+        console.error("レスポンスエラー:", res);
+        throw new Error("プロフィール保存に失敗しました");
+      }
+
+      alert("プロフィールが正常に更新されました！");
+    } catch (error) {
+      console.error("エラーが発生しました:", error);
+      alert("プロフィール保存に失敗しました");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) {
-    return <div>ログイン状態を確認しています...</div>; // ローディング中はメッセージを表示
-  }
-
-  if (!token || !session) {
-    return <div>トークンが無効です。ログインしてください。</div>; // トークンが無い場合にメッセージ表示
+    return <div>Loading...</div>;
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-2xl p-8 space-y-8 bg-white rounded-lg shadow">
-        <div className="flex flex-col items-center space-y-2">
-          <h1 className="text-2xl font-bold text-pink-600">
-            プロフィールを完成させてください
-          </h1>
-        </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="first_name" className="text-pink-600">
-              名
-            </Label>
-            <Input
-              id="first_name"
-              placeholder="名を入力してください"
-              {...register("first_name", { required: "名は必須です" })}
-              className={`border-pink-600 text-gray-700 ${
-                errors.first_name ? "border-red-500" : ""
-              }`}
-            />
-            {errors.first_name && (
-              <p className="text-sm text-red-500">
-                {errors.first_name.message}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="last_name" className="text-pink-600">
-              姓
-            </Label>
-            <Input
-              id="last_name"
-              placeholder="姓を入力してください"
-              {...register("last_name", { required: "姓は必須です" })}
-              className={`border-pink-600 text-gray-700 ${
-                errors.last_name ? "border-red-500" : ""
-              }`}
-            />
-            {errors.last_name && (
-              <p className="text-sm text-red-500">{errors.last_name.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="date_of_birth" className="text-pink-600">
-              生年月日
-            </Label>
-            <Input
-              id="date_of_birth"
-              type="date"
-              {...register("date_of_birth", { required: "生年月日は必須です" })}
-              className={`border-pink-600 text-gray-700 ${
-                errors.date_of_birth ? "border-red-500" : ""
-              }`}
-            />
-            {errors.date_of_birth && (
-              <p className="text-sm text-red-500">
-                {errors.date_of_birth.message}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="gender" className="text-pink-600">
-              性別
-            </Label>
-            <Select
-              {...register("gender", { required: "性別は必須です" })}
-              onValueChange={(value) => setValue("gender", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="性別を選んでください" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">男性</SelectItem>
-                <SelectItem value="female">女性</SelectItem>
-                <SelectItem value="other">その他</SelectItem>
-                <SelectItem value="prefer_not_to_say">答えたくない</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.gender && (
-              <p className="text-sm text-red-500">{errors.gender.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="profile_picture" className="text-pink-600">
-              プロフィール画像URL
-            </Label>
-            <Input
-              id="profile_picture"
-              placeholder="プロフィール画像のURLを入力してください"
-              {...register("profile_picture")}
-              className="border-pink-600 text-gray-700"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="bio" className="text-pink-600">
-              自己紹介
-            </Label>
-            <Textarea
-              id="bio"
-              placeholder="自己紹介を入力してください"
-              {...register("bio")}
-              className="border-pink-600 text-gray-700"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber" className="text-pink-600">
-              電話番号
-            </Label>
-            <Input
-              id="phoneNumber"
-              placeholder="電話番号を入力してください"
-              {...register("phoneNumber")}
-              className="border-pink-600 text-gray-700"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="socialLinks" className="text-pink-600">
-              SNSリンク
-            </Label>
-            <Input
-              id="socialLinks"
-              placeholder="SNSリンクを入力してください"
-              {...register("socialLinks")}
-              className="border-pink-600 text-gray-700"
-            />
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full bg-pink-600 text-white hover:bg-pink-700"
+    <Card className="w-full max-w-4xl mx-auto bg-white shadow-lg rounded-lg">
+      <CardHeader>
+        <CardTitle className="text-3xl font-semibold text-pink-600">
+          {form.watch("nickname") ? `${form.watch("nickname")}さんの` : ""}
+          プロフィール設定
+        </CardTitle>
+        <CardDescription className="text-gray-600">
+          あなたのプロフィール情報を登録・更新してください。
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form
+            onSubmit={(e) => {
+              form.handleSubmit(handleSubmit)(e);
+            }}
+            className="space-y-8"
           >
-            登録を完了する
-          </Button>
-        </form>
-      </div>
-    </div>
+            {/* プロフィール画像 */}
+            <div className="flex flex-col sm:flex-row items-center gap-8">
+              <div className="flex flex-col items-center space-y-4">
+                <Avatar className="w-32 h-32 border-4 border-pink-500">
+                  <AvatarImage
+                    src={profileImage || "/default-avatar.png"}
+                    alt="プロフィール画像"
+                    className="rounded-full"
+                  />
+                  <AvatarFallback className="bg-muted">
+                    <span className="text-gray-500">👤</span>
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex items-center">
+                  <label htmlFor="profile-image" className="cursor-pointer">
+                    <div className="flex items-center space-x-2 text-sm text-pink-600">
+                      <Upload size={16} />
+                      <span>画像をアップロード</span>
+                    </div>
+                    <input
+                      id="profile-image"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG, GIF形式の画像（最大5MB）
+                </p>
+              </div>
+
+              <div className="flex-1 space-y-4 w-full">
+                {/* フォーム項目: ニックネーム */}
+                <FormField
+                  control={form.control}
+                  name="nickname"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-pink-600">
+                        ニックネーム <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="ニックネームを入力"
+                          {...field}
+                          className="border-pink-600 text-gray-700 focus:ring-pink-500"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        他のユーザーに表示される名前です。
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 姓 */}
+                <FormField
+                  control={form.control}
+                  name="last_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-pink-600">
+                        姓 <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="姓を入力"
+                          {...field}
+                          className="border-pink-600 text-gray-700 focus:ring-pink-500"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        あなたの姓を入力してください。
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 名 */}
+                <FormField
+                  control={form.control}
+                  name="first_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-pink-600">
+                        名 <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="名を入力"
+                          {...field}
+                          className="border-pink-600 text-gray-700 focus:ring-pink-500"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        あなたの名を入力してください。
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 性別 */}
+                <FormField
+                  control={form.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-pink-600">性別</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={profileData?.gender || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="border-pink-600 text-gray-700 focus:ring-pink-500">
+                            <SelectValue placeholder="性別を選択" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="male">男性</SelectItem>
+                          <SelectItem value="female">女性</SelectItem>
+                          <SelectItem value="other">その他</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        任意の項目です。回答しなくても構いません。
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 誕生日 */}
+                <FormField
+                  control={form.control}
+                  name="date_of_birth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-pink-600">誕生日</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field} // formにバインディングされたvalueとonChangeが自動的に適用されます
+                          className="border-pink-600 text-gray-700 focus:ring-pink-500"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        あなたの生年月日を入力してください。
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* 自己紹介 */}
+            <FormField
+              control={form.control}
+              name="bio"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-pink-600">自己紹介</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="あなた自身について簡単に紹介してください"
+                      className="resize-none min-h-[120px] border-pink-600 text-gray-700 focus:ring-pink-500"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    あなたのプロフィールページに表示されます。
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* 電話番号 */}
+            <FormField
+              control={form.control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-pink-600">電話番号</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="電話番号を入力"
+                      className="border-pink-600 text-gray-700 focus:ring-pink-500"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    あなたの連絡先電話番号を入力してください。
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* SNSリンク */}
+            <FormField
+              control={form.control}
+              name="socialLinks"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-pink-600">SNSリンク</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="SNSプロフィールリンク"
+                      className="border-pink-600 text-gray-700 focus:ring-pink-500"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    SNSアカウントのリンクを入力してください。
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <CardFooter className="px-0 flex justify-between">
+              <Button variant="outline" type="button" className="text-pink-600">
+                キャンセル
+              </Button>
+              <Button
+                type="submit" // ボタンの type は必ず "submit" にする
+                disabled={isSubmitting}
+                className="bg-pink-600 text-white hover:bg-pink-700"
+              >
+                {isSubmitting ? "保存中..." : "保存する"}
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }
