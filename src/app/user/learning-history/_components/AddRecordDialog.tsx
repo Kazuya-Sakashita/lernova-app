@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@ui/button";
 import {
   Dialog,
@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from "@ui/dialog";
 import FormField from "./FormField";
-import { LearningRecord } from "@/app/_types/formTypes";
+import { LearningRecord, Category } from "@/app/_types/formTypes";
 import { useSession } from "@utils/session"; // SWRで管理されたセッション情報をインポート
 
 interface AddRecordDialogProps {
@@ -17,44 +17,63 @@ interface AddRecordDialogProps {
 }
 
 const AddRecordDialog = ({ onAddRecord }: AddRecordDialogProps) => {
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [content, setContent] = useState("");
+  const [title, setTitle] = useState(""); // 学習記録のタイトル
+  const [date, setDate] = useState(""); // 学習記録の日付
+  const [startTime, setStartTime] = useState(""); // 学習開始時間
+  const [endTime, setEndTime] = useState(""); // 学習終了時間
+  const [content, setContent] = useState(""); // 学習内容
   const [categoryId, setCategoryId] = useState<string | null>(null); // カテゴリーID
-  const [open, setOpen] = useState(false);
-
-  // カテゴリーのリスト（例）
-  const categories = [
-    { id: "1", name: "プログラミング" },
-    { id: "2", name: "デザイン" },
-    { id: "3", name: "マーケティング" },
-    // ここに他のカテゴリーを追加
-  ];
+  const [open, setOpen] = useState(false); // ダイアログの開閉状態
+  const [categories, setCategories] = useState<Category[]>([]); // カテゴリーリスト
 
   const { user } = useSession(); // 現在のユーザーのセッション情報を取得
-  const token = user?.token; // tokenをセッションから取得
-  console.log("AddRecordDialog-Token:", token); // トークンをコンソールに表示
+  const token = user?.token; // セッションからトークンを取得
+  // console.log("AddRecordDialog-Token:", token); // トークンのデバッグ用ログ
 
+  // サーバーからカテゴリー情報を取得する関数
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("/api/category"); // GETリクエストでカテゴリー情報を取得
+      if (!response.ok) {
+        throw new Error("カテゴリーの取得に失敗しました");
+      }
+      const data = await response.json();
+      setCategories(data); // 取得したカテゴリーをステートに保存
+    } catch (error) {
+      console.error("カテゴリー取得エラー:", error); // エラーハンドリング
+      alert("カテゴリーの取得に失敗しました");
+    }
+  };
+
+  // コンポーネントがマウントされたときにカテゴリー情報を取得
+  useEffect(() => {
+    fetchCategories(); // fetchCategories関数を実行
+  }, []);
+
+  // フォームが送信されたときに実行される関数
   const handleSubmit = async () => {
+    // 開始時間と終了時間をDateオブジェクトに変換
     const start = new Date(`2000-01-01T${startTime}:00`);
     const end = new Date(`2000-01-01T${endTime}:00`);
+
+    // 時間差を計算して時間と分に分ける
     const diffMs = end.getTime() - start.getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    const duration = `${hours}時間${minutes.toString().padStart(2, "0")}分`;
+
+    // durationをFloat型に変換（時間単位）
+    const duration = hours + minutes / 60;
 
     const newRecord: LearningRecord = {
-      id: Math.random().toString(36).substring(2, 9),
-      supabaseUserId: user?.id ?? "", // ユーザーIDを使用
-      categoryId: categoryId ?? "", // カテゴリーID
+      id: Math.random().toString(36).substring(2, 9), // 新しいIDを生成
+      supabaseUserId: user?.id ?? "", // ユーザーID
+      categoryId: categoryId ? parseInt(categoryId) : 0, // カテゴリーIDを整数に変換
       title,
-      date: new Date(date),
+      date: new Date(date), // 学習日付
       startTime,
       endTime,
-      duration,
-      content,
+      duration, // 学習時間
+      content, // 学習内容
     };
 
     // 送信するリクエストのデータをコンソールに表示
@@ -68,6 +87,7 @@ const AddRecordDialog = ({ onAddRecord }: AddRecordDialogProps) => {
     });
 
     try {
+      // 学習記録をサーバーに送信
       const response = await fetch("/api/user/learning-history", {
         method: "POST",
         headers: {
@@ -77,29 +97,32 @@ const AddRecordDialog = ({ onAddRecord }: AddRecordDialogProps) => {
         body: JSON.stringify(newRecord),
       });
 
+      // 応答が正常でない場合、エラーをスロー
       if (!response.ok) {
         throw new Error("学習記録の保存に失敗しました");
       }
 
-      const data = await response.json();
+      const data = await response.json(); // サーバーからの応答データを取得
 
       // レスポンスデータをコンソールに表示
       console.log("Response Data:", data);
 
+      // 学習記録の追加成功
       if (data) {
-        console.log("Success:", data); // 成功のレスポンスをログに表示
+        console.log("Success:", data);
       }
 
-      onAddRecord(newRecord); // 新しいレコードを追加
+      // 新しいレコードを状態に追加
+      onAddRecord(newRecord); // 親コンポーネントに新しいレコードを追加する関数を呼び出す
       setOpen(false); // ダイアログを閉じる
-      setTitle("");
-      setDate("");
-      setStartTime("");
-      setEndTime("");
-      setContent("");
+      setTitle(""); // タイトルをリセット
+      setDate(""); // 日付をリセット
+      setStartTime(""); // 開始時間をリセット
+      setEndTime(""); // 終了時間をリセット
+      setContent(""); // 内容をリセット
       setCategoryId(null); // カテゴリー選択をリセット
     } catch (error) {
-      console.error(error);
+      console.error(error); // エラーハンドリング
       alert("学習記録の保存に失敗しました");
     }
   };
@@ -124,17 +147,18 @@ const AddRecordDialog = ({ onAddRecord }: AddRecordDialogProps) => {
             <select
               id="categoryId"
               value={categoryId ?? ""}
-              onChange={(e) => setCategoryId(e.target.value)}
+              onChange={(e) => setCategoryId(e.target.value)} // 選択したカテゴリーIDをステートに保存
               className="h-10 w-full border-gray-300 rounded-md p-2"
             >
               <option value="">カテゴリーを選択</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
-                  {category.name}
+                  {category.category_name} {/* カテゴリー名を表示 */}
                 </option>
               ))}
             </select>
           </div>
+          {/* 学習記録のその他のフィールド */}
           <FormField
             label="タイトル"
             id="title"
@@ -174,7 +198,7 @@ const AddRecordDialog = ({ onAddRecord }: AddRecordDialogProps) => {
         <DialogFooter>
           <Button
             type="button"
-            onClick={handleSubmit}
+            onClick={handleSubmit} // 送信ボタンをクリックした際に学習記録を保存
             className="bg-pink-500 hover:bg-pink-600"
           >
             追加

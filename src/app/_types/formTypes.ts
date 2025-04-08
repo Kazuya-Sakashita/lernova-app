@@ -17,13 +17,13 @@ export type SignUpFormData = {
 // 学習記録に関連する型
 export type LearningRecord = {
   supabaseUserId: string;
-  categoryId: string;
+  categoryId: number;
   id: string;
   title: string;
   date: Date;
   startTime: string;
   endTime: string;
-  duration: string;
+  duration: number;
   content: string;
 };
 
@@ -39,3 +39,8 @@ export type UserProfile = {
   date_of_birth?: string;
   profile_picture?: string;
 };
+
+export interface Category {
+  id: number;
+  category_name: string;
+}
