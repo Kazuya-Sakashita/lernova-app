@@ -1,5 +1,3 @@
-// src/app/user/learning-history/page.tsx
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -33,25 +31,27 @@ interface RawRecord {
 }
 
 const LearningHistory = () => {
-  const [records, setRecords] = useState<LearningRecord[]>([]); // 学習記録を格納するステート
-  const { user } = useSession(); // 現在のユーザーのセッション情報を取得
+  // 学習記録を格納するステート（配列形式）
+  const [records, setRecords] = useState<LearningRecord[]>([]);
+  // セッション情報からユーザー情報を取得
+  const { user } = useSession();
 
   // 学習記録データを変換する関数
   const transformRecord = (rawRecord: RawRecord): LearningRecord => {
     return {
-      id: rawRecord.id, // idをstring型に変換
-      supabaseUserId: rawRecord.supabaseUserId,
+      id: rawRecord.id, // IDをそのまま使用
+      supabaseUserId: rawRecord.supabaseUserId, // SupabaseのユーザーID
       categoryId: rawRecord.category.id, // カテゴリーIDを取得
-      title: rawRecord.title, // タイトルを取得
+      title: rawRecord.title, // 学習記録のタイトル
       date: new Date(rawRecord.learning_date), // learning_dateをDate型に変換
       startTime: rawRecord.start_time.split("T")[1].substring(0, 5), // 時間部分をHH:mm形式に変換
       endTime: rawRecord.end_time.split("T")[1].substring(0, 5), // 時間部分をHH:mm形式に変換
-      duration: rawRecord.duration, // durationはそのまま使用
-      content: rawRecord.content,
+      duration: rawRecord.duration, // 学習時間
+      content: rawRecord.content, // 学習内容
     };
   };
 
-  // `supabaseUserId`に基づいてLearningRecordをフェッチする関数
+  // `supabaseUserId`に基づいて学習記録をフェッチする関数
   const fetchLearningRecords = useCallback(async () => {
     if (!user?.id) {
       console.error("ユーザーIDが見つかりません");
@@ -59,21 +59,29 @@ const LearningHistory = () => {
     }
 
     try {
+      // 学習記録を取得するAPIリクエスト
       const response = await fetch(
         `/api/user/learning-history?supabaseUserId=${user.id}`
       );
 
-      console.log("Fetch Learning Records Response:", response); // レスポンスのデバッグ用ログ
+      // レスポンスのデバッグ用ログ
+      console.log("Fetch Learning Records Response:", response);
+
       if (!response.ok) {
         throw new Error("学習記録の取得に失敗しました");
       }
 
+      // 取得したデータをJSON形式で解析
       const data: RawRecord[] = await response.json();
 
       // データを変換してステートにセット
       const transformedRecords = data.map((rawRecord) =>
         transformRecord(rawRecord)
       );
+
+      // 学習日が今日から近い順番に並べ替え
+      transformedRecords.sort((a, b) => b.date.getTime() - a.date.getTime());
+
       setRecords(transformedRecords); // 変換後のデータをステートにセット
     } catch (error) {
       console.error("学習記録の取得エラー:", error);
@@ -88,12 +96,14 @@ const LearningHistory = () => {
     } else {
       console.log("ユーザー情報がまだ取得されていません");
     }
-  }, [user?.id, fetchLearningRecords]); // user?.idが変わるたびに再実行// fetchLearningRecords関数が変更されたときに実行されるようにする
+  }, [user?.id, fetchLearningRecords]); // user?.idが変わるたびに再実行
 
+  // 新しい学習記録を追加する関数
   const handleAddRecord = (record: LearningRecord) => {
     setRecords([record, ...records]); // 新しいレコードを配列の先頭に追加
   };
 
+  // 学習記録を削除する関数
   const handleDeleteRecord = (id: string) => {
     setRecords(records.filter((record) => record.id !== id)); // 指定されたIDのレコードを削除
   };
@@ -104,6 +114,7 @@ const LearningHistory = () => {
     // 編集処理をここに追加する
   };
 
+  // カレンダー用のデータを生成する関数
   const generateCalendarData = () => {
     const today = new Date(); // 現在の日付を取得
     const weeks: {
@@ -140,12 +151,15 @@ const LearningHistory = () => {
     return { leftCalendar, rightCalendar };
   };
 
-  const { leftCalendar, rightCalendar } = generateCalendarData(); // カレンダー用データを取得
+  // カレンダー用のデータを取得
+  const { leftCalendar, rightCalendar } = generateCalendarData();
 
   return (
     <div className="space-y-6">
+      {/* ページタイトル */}
       <h1 className="text-3xl font-bold">学習履歴</h1>
 
+      {/* 学習進捗カード */}
       <Card>
         <CardHeader>
           <CardTitle>学習進捗</CardTitle>
@@ -159,11 +173,13 @@ const LearningHistory = () => {
         </CardContent>
       </Card>
 
+      {/* 学習記録一覧のタイトルと追加ボタン */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">学習記録一覧</h2>
         <AddRecordDialog onAddRecord={handleAddRecord} />
       </div>
 
+      {/* 学習記録を表示するテーブル */}
       <LearningRecordTable
         records={records}
         handleDeleteRecord={handleDeleteRecord}
