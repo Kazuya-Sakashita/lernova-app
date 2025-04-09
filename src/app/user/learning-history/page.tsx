@@ -13,22 +13,7 @@ import {
 } from "@/app/_components/ui/card";
 import { LearningRecord } from "@/app/_types/formTypes";
 import { useSession } from "@utils/session"; // セッション情報を取得
-
-// 生データの型を定義
-interface RawRecord {
-  id: string;
-  supabaseUserId: string;
-  category: {
-    id: number;
-    category_name: string;
-  };
-  title: string;
-  learning_date: string; // ISO日付文字列
-  start_time: string; // ISO日付文字列
-  end_time: string; // ISO日付文字列
-  duration: number;
-  content: string;
-}
+import { RawRecord } from "@/app/_types/formTypes"; // 生データの型をインポート
 
 const LearningHistory = () => {
   // 学習記録を格納するステート（配列形式）
