@@ -1,44 +1,32 @@
-import { NextApiRequest, NextApiResponse } from "next";
-import { supabase } from "@/app/_utils/supabase";
-import { prisma } from "@/app/_utils/prisma";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/app/_utils/prisma"; // Prisma Clientをインポート
+import { authenticateUser } from "@/app/_utils/authenticateUser"; // 認証ミドルウェアをインポート
 
-export async function POST(req: NextApiRequest, res: NextApiResponse) {
+// POSTリクエストで学習記録を作成するAPIエンドポイント
+export async function POST(req: NextRequest) {
+  const authError = await authenticateUser(req);
+  if (authError) {
+    return authError; // 認証に失敗した場合はエラーを返す
+  }
+
   try {
-    // リクエストヘッダーからトークンを取得
-    const authorizationHeader = req.headers["authorization"];
+    const body = await req.json(); // ReadableStreamをJSONとして読み込む
+    const {
+      supabaseUserId,
+      categoryId,
+      title,
+      date,
+      startTime,
+      endTime,
+      duration,
+      content,
+    } = body;
 
-    if (typeof authorizationHeader !== "string") {
-      console.error("Authorization header is missing or invalid");
-      return res
-        .status(401)
-        .json({ message: "Authorization header is missing or invalid" });
-    }
+    console.log("受け取ったデータ:", body);
 
-    const token = authorizationHeader.split("Bearer ")[1]; // "Bearer " の後ろの部分を抽出
-
-    console.log("Received token:", token); // トークンをログに表示
-
-    if (!token) {
-      console.error("Token is missing");
-      return res.status(401).json({ message: "トークンがありません" });
-    }
-
-    // Supabaseでトークンを検証
-    const { data, error } = await supabase.auth.getUser(token);
-
-    if (error || !data || !data.user) {
-      console.error("Invalid token", error?.message);
-      return res.status(401).json({ message: "トークンが無効です" });
-    }
-
-    const userId = data.user.id;
-    console.log("Authenticated user ID:", userId); // 認証されたユーザーIDをログに表示
-
-    // リクエストボディから学習記録のデータを取得
-    const { categoryId, title, date, startTime, endTime, duration, content } =
-      req.body;
-
+    // 必須のフィールドがすべて存在するかを確認
     if (
+      !supabaseUserId ||
       !categoryId ||
       !title ||
       !date ||
@@ -47,29 +35,67 @@ export async function POST(req: NextApiRequest, res: NextApiResponse) {
       !duration ||
       !content
     ) {
-      return res
-        .status(400)
-        .json({ message: "必須のフィールドが不足しています" });
+      return NextResponse.json(
+        { message: "必須のフィールドが不足しています" },
+        { status: 400 }
+      );
     }
 
-    // 新しい学習記録をデータベースに保存
     const newRecord = await prisma.learningRecord.create({
       data: {
-        supabaseUserId: userId, // SupabaseのユーザーIDを使用
+        supabaseUserId,
         categoryId,
         title,
         learning_date: new Date(date),
         start_time: new Date(`2000-01-01T${startTime}:00`),
         end_time: new Date(`2000-01-01T${endTime}:00`),
-        duration: parseFloat(duration),
+        duration,
         content,
       },
     });
 
-    // 成功した場合は新しいレコードを返す
-    return res.status(200).json(newRecord); // ここでレスポンスを返す
+    console.log("学習記録が正常に保存されました:", newRecord);
+
+    return NextResponse.json(newRecord, { status: 200 });
   } catch (error) {
-    console.error("Error creating learning record:", error);
-    return res.status(500).json({ message: "学習記録の保存に失敗しました" });
+    console.error("学習記録保存エラー:", error);
+    return NextResponse.json(
+      { message: "学習記録の保存に失敗しました" },
+      { status: 500 }
+    );
+  }
+}
+
+// GETリクエストで学習記録を取得するAPIエンドポイント
+export async function GET(req: NextRequest) {
+  try {
+    // URLのクエリパラメータからsupabaseUserIdを取得
+    const { searchParams } = new URL(req.url);
+    const supabaseUserId = searchParams.get("supabaseUserId");
+
+    // supabaseUserIdが提供されていない場合、エラーレスポンスを返す
+    if (!supabaseUserId) {
+      return NextResponse.json(
+        { message: "ユーザーIDが指定されていません" },
+        { status: 400 }
+      );
+    }
+
+    // Prismaを使用して、supabaseUserIdに基づいて学習記録を取得
+    const records = await prisma.learningRecord.findMany({
+      where: { supabaseUserId }, // supabaseUserIdでフィルター
+      include: {
+        category: true, // 必要に応じてカテゴリーを含める（任意）
+      },
+    });
+
+    // 学習記録が存在する場合、レスポンスとして返す
+    return NextResponse.json(records, { status: 200 });
+  } catch (error) {
+    console.error("学習記録取得エラー:", error);
+    return NextResponse.json(
+      { message: "学習記録の取得に失敗しました" },
+      { status: 500 }
+    );
   }
 }
