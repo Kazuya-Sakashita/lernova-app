@@ -12,8 +12,6 @@ export async function GET() {
         category_name: true, // カテゴリーの名前を取得
       },
     });
-    console.log("取得したカテゴリー:", categories);
-    // カテゴリーが取得できた場合、レスポンスとして返す
     return NextResponse.json(categories, { status: 200 });
   } catch (error) {
     console.error("カテゴリー取得エラー:", error);
