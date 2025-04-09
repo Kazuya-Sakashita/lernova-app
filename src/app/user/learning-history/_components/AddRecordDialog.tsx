@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@ui/button";
 import {
@@ -7,10 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@ui/dialog";
+} from "@ui/dialog"; // Dialogに必要なコンポーネントをインポート
 import FormField from "./FormField";
 import { LearningRecord, Category } from "@/app/_types/formTypes";
-import { useSession } from "@utils/session"; // SWRで管理されたセッション情報をインポート
+import { useSession } from "@utils/session"; // セッション情報を取得
 
 interface AddRecordDialogProps {
   onAddRecord: (record: LearningRecord) => void;
@@ -28,7 +30,6 @@ const AddRecordDialog = ({ onAddRecord }: AddRecordDialogProps) => {
 
   const { user } = useSession(); // 現在のユーザーのセッション情報を取得
   const token = user?.token; // セッションからトークンを取得
-  // console.log("AddRecordDialog-Token:", token); // トークンのデバッグ用ログ
 
   // サーバーからカテゴリー情報を取得する関数
   const fetchCategories = async () => {
@@ -76,16 +77,6 @@ const AddRecordDialog = ({ onAddRecord }: AddRecordDialogProps) => {
       content, // 学習内容
     };
 
-    // 送信するリクエストのデータをコンソールに表示
-    console.log("Sending new learning record:", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // トークンをヘッダーに追加
-      },
-      body: JSON.stringify(newRecord),
-    });
-
     try {
       // 学習記録をサーバーに送信
       const response = await fetch("/api/user/learning-history", {
@@ -97,19 +88,8 @@ const AddRecordDialog = ({ onAddRecord }: AddRecordDialogProps) => {
         body: JSON.stringify(newRecord),
       });
 
-      // 応答が正常でない場合、エラーをスロー
       if (!response.ok) {
         throw new Error("学習記録の保存に失敗しました");
-      }
-
-      const data = await response.json(); // サーバーからの応答データを取得
-
-      // レスポンスデータをコンソールに表示
-      console.log("Response Data:", data);
-
-      // 学習記録の追加成功
-      if (data) {
-        console.log("Success:", data);
       }
 
       // 新しいレコードを状態に追加
@@ -134,10 +114,17 @@ const AddRecordDialog = ({ onAddRecord }: AddRecordDialogProps) => {
           学習記録を追加
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent
+        className="sm:max-w-[425px]"
+        aria-describedby="dialog-description" // ダイアログの説明を設定
+      >
         <DialogHeader>
           <DialogTitle>学習記録を追加</DialogTitle>
         </DialogHeader>
+        {/* ダイアログの説明を追加 */}
+        <div id="dialog-description" className="text-sm text-gray-500">
+          ここでは、学習記録を入力し、保存することができます。
+        </div>
         <div className="grid gap-4 py-4">
           {/* カテゴリー選択フォーム */}
           <div className="space-y-1">
