@@ -82,8 +82,13 @@ const LearningHistory = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    fetchLearningRecords(); // コンポーネントがマウントされたときに学習記録を取得
-  }, [fetchLearningRecords]); // fetchLearningRecords関数が変更されたときに実行されるようにする
+    // ユーザー情報が存在する場合のみfetchLearningRecordsを実行
+    if (user?.id) {
+      fetchLearningRecords();
+    } else {
+      console.log("ユーザー情報がまだ取得されていません");
+    }
+  }, [user?.id, fetchLearningRecords]); // user?.idが変わるたびに再実行// fetchLearningRecords関数が変更されたときに実行されるようにする
 
   const handleAddRecord = (record: LearningRecord) => {
     setRecords([record, ...records]); // 新しいレコードを配列の先頭に追加
