@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import AddRecordDialog from "./_components/AddRecordDialog";
+import LearningRecordDialog from "./_components/LearningRecordDialog";
 import Calendar from "./_components/Calendar";
 import LearningRecordTable from "./_components/LearningRecordTable";
 import {
@@ -13,45 +13,31 @@ import {
 } from "@/app/_components/ui/card";
 import { LearningRecord } from "@/app/_types/formTypes";
 import { useSession } from "@utils/session"; // セッション情報を取得
-
-// 生データの型を定義
-interface RawRecord {
-  id: string;
-  supabaseUserId: string;
-  category: {
-    id: number;
-    category_name: string;
-  };
-  title: string;
-  learning_date: string; // ISO日付文字列
-  start_time: string; // ISO日付文字列
-  end_time: string; // ISO日付文字列
-  duration: number;
-  content: string;
-}
+import { RawRecord } from "@/app/_types/formTypes"; // 生データの型をインポート
 
 const LearningHistory = () => {
   // 学習記録を格納するステート（配列形式）
   const [records, setRecords] = useState<LearningRecord[]>([]);
-  // セッション情報からユーザー情報を取得
-  const { user } = useSession();
+  // 編集する学習記録のステート
+  const [recordToEdit, setRecordToEdit] = useState<LearningRecord | null>(null);
+  const { user } = useSession(); // ユーザー情報
 
   // 学習記録データを変換する関数
   const transformRecord = (rawRecord: RawRecord): LearningRecord => {
     return {
-      id: rawRecord.id, // IDをそのまま使用
-      supabaseUserId: rawRecord.supabaseUserId, // SupabaseのユーザーID
-      categoryId: rawRecord.category.id, // カテゴリーIDを取得
-      title: rawRecord.title, // 学習記録のタイトル
-      date: new Date(rawRecord.learning_date), // learning_dateをDate型に変換
-      startTime: rawRecord.start_time.split("T")[1].substring(0, 5), // 時間部分をHH:mm形式に変換
-      endTime: rawRecord.end_time.split("T")[1].substring(0, 5), // 時間部分をHH:mm形式に変換
-      duration: rawRecord.duration, // 学習時間
-      content: rawRecord.content, // 学習内容
+      id: rawRecord.id,
+      supabaseUserId: rawRecord.supabaseUserId,
+      categoryId: rawRecord.category.id,
+      title: rawRecord.title,
+      date: new Date(rawRecord.learning_date),
+      startTime: rawRecord.start_time.split("T")[1].substring(0, 5),
+      endTime: rawRecord.end_time.split("T")[1].substring(0, 5),
+      duration: rawRecord.duration,
+      content: rawRecord.content,
     };
   };
 
-  // `supabaseUserId`に基づいて学習記録をフェッチする関数
+  // 学習記録をフェッチ
   const fetchLearningRecords = useCallback(async () => {
     if (!user?.id) {
       console.error("ユーザーIDが見つかりません");
@@ -59,30 +45,13 @@ const LearningHistory = () => {
     }
 
     try {
-      // 学習記録を取得するAPIリクエスト
       const response = await fetch(
         `/api/user/learning-history?supabaseUserId=${user.id}`
       );
-
-      // レスポンスのデバッグ用ログ
-      console.log("Fetch Learning Records Response:", response);
-
-      if (!response.ok) {
-        throw new Error("学習記録の取得に失敗しました");
-      }
-
-      // 取得したデータをJSON形式で解析
       const data: RawRecord[] = await response.json();
-
-      // データを変換してステートにセット
-      const transformedRecords = data.map((rawRecord) =>
-        transformRecord(rawRecord)
-      );
-
-      // 学習日が今日から近い順番に並べ替え
+      const transformedRecords = data.map(transformRecord);
       transformedRecords.sort((a, b) => b.date.getTime() - a.date.getTime());
-
-      setRecords(transformedRecords); // 変換後のデータをステートにセット
+      setRecords(transformedRecords);
     } catch (error) {
       console.error("学習記録の取得エラー:", error);
       alert("学習記録の取得に失敗しました");
@@ -90,13 +59,12 @@ const LearningHistory = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    // ユーザー情報が存在する場合のみfetchLearningRecordsを実行
     if (user?.id) {
       fetchLearningRecords();
     } else {
       console.log("ユーザー情報がまだ取得されていません");
     }
-  }, [user?.id, fetchLearningRecords]); // user?.idが変わるたびに再実行
+  }, [user?.id, fetchLearningRecords]);
 
   // 新しい学習記録を追加する関数
   const handleAddRecord = (record: LearningRecord) => {
@@ -104,14 +72,69 @@ const LearningHistory = () => {
   };
 
   // 学習記録を削除する関数
-  const handleDeleteRecord = (id: string) => {
-    setRecords(records.filter((record) => record.id !== id)); // 指定されたIDのレコードを削除
+  const handleDeleteRecord = async (id: string) => {
+    // 削除確認のアラート
+    const confirmDelete = window.confirm("本当にこの学習記録を削除しますか？");
+
+    if (confirmDelete) {
+      try {
+        const response = await fetch(`/api/user/learning-history/${id}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`, // トークンをヘッダーに追加
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("学習記録の削除に失敗しました");
+        }
+
+        // 削除成功時、該当レコードをテーブルから削除
+        setRecords(records.filter((record) => record.id !== id));
+      } catch (error) {
+        console.error(error);
+        alert("削除に失敗しました");
+      }
+    }
   };
 
-  // 編集機能（未実装）
+  // 編集機能（選択された学習記録をフォームにセット）
   const handleEditRecord = (record: LearningRecord) => {
-    console.log("Editing record with id:", record.id);
-    // 編集処理をここに追加する
+    setRecordToEdit(record);
+  };
+
+  // 学習記録の保存処理
+  const handleSaveRecord = async (updatedRecord: LearningRecord) => {
+    console.log("token", user?.token);
+    try {
+      const response = await fetch(
+        `/api/user/learning-history/${updatedRecord.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+          body: JSON.stringify(updatedRecord),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("学習記録の更新に失敗しました");
+      }
+
+      setRecords((prevRecords) =>
+        prevRecords.map((record) =>
+          record.id === updatedRecord.id ? updatedRecord : record
+        )
+      );
+
+      setRecordToEdit(null); // 編集モード解除
+    } catch (error) {
+      console.error(error);
+      alert("学習記録の保存に失敗しました");
+    }
   };
 
   // カレンダー用のデータを生成する関数
@@ -176,7 +199,12 @@ const LearningHistory = () => {
       {/* 学習記録一覧のタイトルと追加ボタン */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">学習記録一覧</h2>
-        <AddRecordDialog onAddRecord={handleAddRecord} />
+        <LearningRecordDialog
+          onAddRecord={handleAddRecord}
+          onSaveRecord={handleSaveRecord}
+          recordToEdit={recordToEdit}
+          isEditing={recordToEdit !== null}
+        />
       </div>
 
       {/* 学習記録を表示するテーブル */}
