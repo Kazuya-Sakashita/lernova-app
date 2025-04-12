@@ -67,8 +67,35 @@ const LearningHistory = () => {
   }, [user?.id, fetchLearningRecords]);
 
   // 新しい学習記録を追加する関数
-  const handleAddRecord = (record: LearningRecord) => {
-    setRecords([record, ...records]); // 新しいレコードを配列の先頭に追加
+  // 新しい学習記録を追加する関数
+  const handleAddRecord = async (newRecord: LearningRecord) => {
+    try {
+      const response = await fetch(`/api/user/learning-history`, {
+        method: "POST", // 新規作成のためPOSTメソッド
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.token}`, // トークンをヘッダーに追加
+        },
+        body: JSON.stringify(newRecord), // 新しい学習記録をJSONとして送信
+      });
+
+      if (!response.ok) {
+        throw new Error("学習記録の保存に失敗しました");
+      }
+
+      // サーバーから保存されたレコードを取得
+      const savedRecord = await response.json();
+      console.log("新規学習記録が保存されました:", savedRecord);
+
+      // 保存されたレコードをstateに追加
+      setRecords([savedRecord, ...records]); // 新しいレコードをstateに追加
+
+      // 学習記録一覧を再取得
+      fetchLearningRecords();
+    } catch (error) {
+      console.error("保存処理エラー:", error);
+      alert("学習記録の保存に失敗しました");
+    }
   };
 
   // 学習記録を削除する関数

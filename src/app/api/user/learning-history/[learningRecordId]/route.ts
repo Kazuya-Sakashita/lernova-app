@@ -157,3 +157,61 @@ export const DELETE = async (
     );
   }
 };
+
+// 学習記録を新規作成するエンドポイント（POST）
+export const POST = async (req: NextRequest) => {
+  try {
+    const record = await req.json(); // リクエストボディをJSONとして取得
+    console.log("Received record:", record); // デバッグ用ログ
+
+    // 必要なデータが揃っているか確認
+    const {
+      title,
+      date,
+      startTime,
+      endTime,
+      content,
+      categoryId,
+      duration,
+      supabaseUserId,
+    } = record;
+
+    if (
+      !title ||
+      !date ||
+      !startTime ||
+      !endTime ||
+      !content ||
+      !categoryId ||
+      !duration ||
+      !supabaseUserId
+    ) {
+      return NextResponse.json(
+        { message: "必要なデータが不足しています" },
+        { status: 400 }
+      );
+    }
+
+    // Prismaで新しいレコードを保存
+    const newRecord = await prisma.learningRecord.create({
+      data: {
+        supabaseUserId,
+        categoryId,
+        title,
+        learning_date: new Date(date), // dateをDate型に変換
+        start_time: new Date(`2000-01-01T${startTime}:00`), // startTimeをDate型に変換
+        end_time: new Date(`2000-01-01T${endTime}:00`), // endTimeをDate型に変換
+        content,
+        duration,
+      },
+    });
+
+    return NextResponse.json({ status: "success", newRecord }, { status: 201 });
+  } catch (error) {
+    console.error("保存処理エラー:", error);
+    return NextResponse.json(
+      { message: "学習記録の保存に失敗しました" },
+      { status: 500 }
+    );
+  }
+};
