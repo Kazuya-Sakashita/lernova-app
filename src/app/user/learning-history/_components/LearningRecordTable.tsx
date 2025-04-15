@@ -15,18 +15,52 @@ import { ja } from "date-fns/locale"; // 日本語ロケールをインポート
 import { LearningRecord } from "@/app/_types/formTypes"; // 学習記録の型をインポート
 import ActionButton from "@components/ActionButton"; // ActionButtonコンポーネントをインポート
 
-// LearningRecordTableコンポーネントに渡されるpropsの型定義
+// LearningRecordTablePropsの型定義
 interface LearningRecordTableProps {
   records: LearningRecord[]; // 学習記録の配列
   handleDeleteRecord: (id: string) => void; // 削除処理を行う関数
   handleEditRecord: (record: LearningRecord) => void; // 編集処理を行う関数
 }
 
-// 学習記録を表示するテーブルのコンポーネント
+// 時間を日本時間に変換してフォーマットする関数
+const formatTimeToJST = (utcDate: string) => {
+  console.log("Received UTC Date:", utcDate); // utcDateの値を表示
+
+  // 時間が"00:00"のように日付部分がない場合は、現在の日付を補完してISO形式にする
+  if (utcDate.length === 5) {
+    const currentDate = new Date();
+    const formattedDate = `${
+      currentDate.toISOString().split("T")[0]
+    }T${utcDate}:00.000Z`; // 現在の日付と時間を結合
+    console.log("Formatted Date:", formattedDate); // 変換後の日時を確認
+    return new Date(formattedDate).toLocaleString("ja-JP", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Asia/Tokyo", // 日本のタイムゾーンを指定
+    }); // 新しいDateオブジェクトを日本時間で表示
+  }
+
+  const date = new Date(utcDate); // UTCからDateオブジェクトを作成
+
+  // 日付が無効な場合はエラーメッセージを表示
+  if (isNaN(date.getTime())) {
+    console.error(`無効な時間: ${utcDate}`);
+    return "無効な時間";
+  }
+
+  console.log("Converted Date Object:", date); // Dateオブジェクトが有効か確認
+
+  return date.toLocaleString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo", // 日本のタイムゾーンを指定
+  }); // 日本時間にフォーマットして、秒を省略
+};
+
 const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
-  records, // 親コンポーネントから渡された学習記録
-  handleDeleteRecord, // 削除用の関数
-  handleEditRecord, // 編集用の関数
+  records,
+  handleDeleteRecord,
+  handleEditRecord,
 }) => {
   return (
     <div className="rounded-md border">
@@ -42,7 +76,7 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
         </TableHeader>
 
         <TableBody>
-          {records.map((record) => (
+          {records.map((record: LearningRecord) => (
             <TableRow key={record.id}>
               <TableCell className="font-medium">{record.title}</TableCell>
               <TableCell>
@@ -55,7 +89,8 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
               </TableCell>
 
               <TableCell>
-                {record.startTime} - {record.endTime}
+                {formatTimeToJST(record.startTime)} -{" "}
+                {formatTimeToJST(record.endTime)}
                 <div className="text-xs text-muted-foreground">
                   {record.duration}時間
                 </div>
