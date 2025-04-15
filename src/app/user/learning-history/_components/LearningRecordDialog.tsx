@@ -28,9 +28,10 @@ const LearningRecordDialog = ({
   isEditing,
 }: LearningRecordDialogProps) => {
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+  const [date, setDate] = useState(""); // 開始日付
+  const [endDate, setEndDate] = useState(""); // 終了日付
+  const [startTime, setStartTime] = useState(""); // 開始時間
+  const [endTime, setEndTime] = useState(""); // 終了時間
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -73,10 +74,12 @@ const LearningRecordDialog = ({
 
   // フォーム送信時に呼び出す関数
   const handleSubmit = async () => {
-    const start = new Date(`2000-01-01T${startTime}:00`);
-    const end = new Date(`2000-01-01T${endTime}:00`);
+    // 開始日付と時間を統合して開始日時を作成
+    const startDateTime = new Date(`${date}T${startTime}:00`);
+    // 終了日付と時間を統合して終了日時を作成
+    const endDateTime = new Date(`${endDate}T${endTime}:00`);
 
-    const diffMs = end.getTime() - start.getTime();
+    const diffMs = endDateTime.getTime() - startDateTime.getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -89,9 +92,9 @@ const LearningRecordDialog = ({
       supabaseUserId: user?.id ?? "",
       categoryId: categoryId ? parseInt(categoryId) : 0,
       title,
-      date: new Date(date),
-      startTime,
-      endTime,
+      date: new Date(date), // 日付はそのまま
+      startTime: startDateTime.toISOString(), // UTCで保存
+      endTime: endDateTime.toISOString(), // UTCで保存
       duration,
       content,
     };
@@ -165,7 +168,7 @@ const LearningRecordDialog = ({
             type="text"
           />
           <FormField
-            label="日付"
+            label="開始日付"
             id="date"
             value={date}
             onChange={setDate}
@@ -177,6 +180,13 @@ const LearningRecordDialog = ({
             value={startTime}
             onChange={setStartTime}
             type="time"
+          />
+          <FormField
+            label="終了日付"
+            id="endDate"
+            value={endDate}
+            onChange={setEndDate}
+            type="date"
           />
           <FormField
             label="終了時間"
