@@ -10,8 +10,6 @@ import {
   TableHead,
 } from "@ui/table"; // UIコンポーネントのインポート
 import { Edit, Trash } from "lucide-react"; // 編集と削除アイコンのインポート
-import { format } from "date-fns"; // 日付のフォーマットを行うためのライブラリ
-import { ja } from "date-fns/locale"; // 日本語ロケールをインポート
 import { LearningRecord } from "@/app/_types/formTypes"; // 学習記録の型をインポート
 import ActionButton from "@components/ActionButton"; // ActionButtonコンポーネントをインポート
 
@@ -24,6 +22,11 @@ interface LearningRecordTableProps {
 
 // 時間を日本時間に変換してフォーマットする関数
 const formatTimeToJST = (utcDate: string) => {
+  if (!utcDate || typeof utcDate !== "string") {
+    console.error("無効な時間: ", utcDate); // 不正な値が渡された場合にエラーメッセージを表示
+    return "無効な時間";
+  }
+
   console.log("Received UTC Date:", utcDate); // utcDateの値を表示
 
   // 時間が"00:00"のように日付部分がない場合は、現在の日付を補完してISO形式にする
@@ -62,6 +65,14 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
   handleDeleteRecord,
   handleEditRecord,
 }) => {
+  const formatDateToYMD = (date: Date) => {
+    return date.toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -76,48 +87,65 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
         </TableHeader>
 
         <TableBody>
-          {records.map((record: LearningRecord) => (
-            <TableRow key={record.id}>
-              <TableCell className="font-medium">{record.title}</TableCell>
-              <TableCell>
-                {record.date instanceof Date &&
-                !isNaN(record.date.getTime()) ? (
-                  format(record.date, "yyyy/MM/dd", { locale: ja })
-                ) : (
-                  <span>無効な日付</span>
-                )}
-              </TableCell>
+          {records.map((record: LearningRecord) => {
+            console.log("Record:", record); // 各レコードの内容を表示
+            // startTimeとendTimeを検証してDate型に変換
+            const startDate =
+              typeof record.startTime === "string"
+                ? new Date(record.startTime)
+                : record.startTime;
+            const endDate =
+              typeof record.endTime === "string"
+                ? new Date(record.endTime)
+                : record.endTime;
 
-              <TableCell>
-                {formatTimeToJST(record.startTime)} -{" "}
-                {formatTimeToJST(record.endTime)}
-                <div className="text-xs text-muted-foreground">
-                  {record.duration}時間
-                </div>
-              </TableCell>
+            console.log("Start Date:", startDate);
+            console.log("End Date:", endDate);
 
-              <TableCell className="hidden md:table-cell max-w-xs truncate">
-                {record.content}
-              </TableCell>
+            return (
+              <TableRow key={record.id}>
+                <TableCell className="font-medium">{record.title}</TableCell>
+                <TableCell>
+                  {record.date instanceof Date &&
+                  !isNaN(record.date.getTime()) ? (
+                    formatDateToYMD(record.date) // 日付部分だけ表示
+                  ) : (
+                    <span>無効な日付</span>
+                  )}
+                </TableCell>
 
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <ActionButton
-                    onClick={() => handleEditRecord(record)}
-                    icon={<Edit className="h-4 w-4" />}
-                    label="編集"
-                    variant="outline"
-                  />
-                  <ActionButton
-                    onClick={() => handleDeleteRecord(record.id)}
-                    icon={<Trash className="h-4 w-4" />}
-                    label="削除"
-                    variant="destructive"
-                  />
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                <TableCell>
+                  {/* startTimeとendTimeを日本時間に変換して表示 */}
+                  {formatTimeToJST(record.startTime)} -{" "}
+                  {formatTimeToJST(record.endTime)}
+                  <div className="text-xs text-muted-foreground">
+                    {record.duration}時間
+                  </div>
+                </TableCell>
+
+                <TableCell className="hidden md:table-cell max-w-xs truncate">
+                  {record.content}
+                </TableCell>
+
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <ActionButton
+                      onClick={() => handleEditRecord(record)}
+                      icon={<Edit className="h-4 w-4" />}
+                      label="編集"
+                      variant="outline"
+                    />
+                    <ActionButton
+                      onClick={() => handleDeleteRecord(record.id)}
+                      icon={<Trash className="h-4 w-4" />}
+                      label="削除"
+                      variant="destructive"
+                    />
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
