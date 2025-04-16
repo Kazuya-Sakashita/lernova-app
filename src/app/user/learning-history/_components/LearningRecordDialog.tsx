@@ -130,18 +130,37 @@ const LearningRecordDialog = ({
         await onAddRecord(newRecord); // 新規追加の場合
       }
 
-      setOpen(false);
-      setTitle("");
-      setDate("");
-      setStartTime("");
-      setEndTime("");
-      setContent("");
-      setCategoryId(null);
+      setOpen(false); // ダイアログを閉じる
+      resetForm(); // フォームのリセット
     } catch (error) {
       console.error(error);
       alert("学習記録の保存に失敗しました");
     }
   };
+
+  // ダイアログを閉じた時にデータをリセット
+  const handleDialogClose = () => {
+    setOpen(false); // ダイアログを閉じる
+    resetForm(); // フォームのリセット
+  };
+
+  // フォームデータをリセットする関数
+  const resetForm = () => {
+    setTitle("");
+    setDate("");
+    setStartTime("");
+    setEndDate("");
+    setEndTime("");
+    setContent("");
+    setCategoryId(null);
+  };
+
+  // ダイアログの状態（開閉）によってフォームリセットを行う
+  useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -238,6 +257,13 @@ const LearningRecordDialog = ({
             className="bg-pink-500 hover:bg-pink-600"
           >
             {isEditing ? "保存" : "追加"}
+          </Button>
+          <Button
+            type="button"
+            onClick={handleDialogClose} // ダイアログを閉じる
+            className="bg-gray-300 hover:bg-gray-400"
+          >
+            キャンセル
           </Button>
         </DialogFooter>
       </DialogContent>
