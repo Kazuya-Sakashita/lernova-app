@@ -33,7 +33,7 @@ const LearningRecordDialog = ({
   const [startTime, setStartTime] = useState(""); // 開始時間
   const [endTime, setEndTime] = useState(""); // 終了時間
   const [content, setContent] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null); // カテゴリID
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -47,7 +47,8 @@ const LearningRecordDialog = ({
         throw new Error("カテゴリーの取得に失敗しました");
       }
       const data = await response.json();
-      setCategories(data);
+      setCategories(data); // 取得したデータをcategoriesにセット
+      console.log("取得したカテゴリー:", data); // 取得したカテゴリデータを確認
     } catch (error) {
       console.error("カテゴリー取得エラー:", error);
       alert("カテゴリーの取得に失敗しました");
@@ -58,18 +59,41 @@ const LearningRecordDialog = ({
   useEffect(() => {
     if (isEditing && recordToEdit) {
       setTitle(recordToEdit.title);
-      setDate(recordToEdit.date.toISOString().split("T")[0]);
-      setStartTime(recordToEdit.startTime);
-      setEndTime(recordToEdit.endTime);
+      setDate(recordToEdit.date.toISOString().split("T")[0]); // 開始日付
+      setStartTime(recordToEdit.startTime); // 開始時間
+
+      // 終了日時が時間のみの場合は現在の日付を補完してセット
+      if (recordToEdit.endTime) {
+        let endDateObj;
+        if (recordToEdit.endTime.length === 5) {
+          // "HH:mm" の場合（時間だけの場合）
+          const currentDate = new Date(recordToEdit.date); // 開始日付と同じ日付を使用
+          const endTimeFormatted = `${
+            currentDate.toISOString().split("T")[0]
+          }T${recordToEdit.endTime}:00.000Z`; // 現在の日付と終了時間を結合
+          endDateObj = new Date(endTimeFormatted);
+        } else {
+          endDateObj = new Date(recordToEdit.endTime); // 既存の日付形式
+        }
+
+        if (!isNaN(endDateObj.getTime())) {
+          setEndDate(endDateObj.toISOString().split("T")[0]); // 終了日付（時間部分が抽出される）
+          setEndTime(recordToEdit.endTime); // 終了時間
+        } else {
+          console.error("無効な終了日時:", recordToEdit.endTime);
+        }
+      }
+
       setContent(recordToEdit.content);
-      setCategoryId(String(recordToEdit.categoryId));
+      setCategoryId(String(recordToEdit.categoryId)); // 編集時にカテゴリをセット
+
       setOpen(true);
     }
   }, [isEditing, recordToEdit]);
 
-  // カテゴリー情報の取得
+  // カテゴリ情報の取得
   useEffect(() => {
-    fetchCategories();
+    fetchCategories(); // マウント時にカテゴリ情報を取得
   }, []);
 
   // フォーム送信時に呼び出す関数
@@ -90,7 +114,7 @@ const LearningRecordDialog = ({
         ? recordToEdit.id
         : Math.random().toString(36).substring(2, 9),
       supabaseUserId: user?.id ?? "",
-      categoryId: categoryId ? parseInt(categoryId) : 0,
+      categoryId: categoryId ? parseInt(categoryId) : 0, // ここでカテゴリIDを保存
       title,
       date: new Date(date), // 日付はそのまま
       startTime: startDateTime.toISOString(), // UTCで保存
@@ -152,11 +176,15 @@ const LearningRecordDialog = ({
               className="h-10 w-full border-gray-300 rounded-md p-2"
             >
               <option value="">カテゴリーを選択</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.category_name}
-                </option>
-              ))}
+              {categories.length > 0 ? (
+                categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.category_name}
+                  </option>
+                ))
+              ) : (
+                <option disabled>カテゴリが読み込まれませんでした</option>
+              )}
             </select>
           </div>
 
