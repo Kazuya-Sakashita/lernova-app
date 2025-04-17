@@ -13,6 +13,11 @@ import {
 import FormField from "./FormField";
 import { LearningRecord, Category } from "@/app/_types/formTypes";
 import { useSession } from "@utils/session"; // セッション情報を取得
+import {
+  extractTime,
+  convertToUTC,
+  extractDateFromUTC,
+} from "@utils/timeUtils"; // 時間変換関数をインポート
 
 interface LearningRecordDialogProps {
   onAddRecord: (record: LearningRecord) => void;
@@ -59,29 +64,13 @@ const LearningRecordDialog = ({
   useEffect(() => {
     if (isEditing && recordToEdit) {
       setTitle(recordToEdit.title);
-      setDate(recordToEdit.date.toISOString().split("T")[0]); // 開始日付
-      setStartTime(recordToEdit.startTime); // 開始時間
+      setDate(extractDateFromUTC(recordToEdit.startTime)); // 開始日付
 
-      // 終了日時が時間のみの場合は現在の日付を補完してセット
+      // UTCからJSTに変換してフォームに表示
+      setStartTime(extractTime(recordToEdit.startTime)); // 開始時間
       if (recordToEdit.endTime) {
-        let endDateObj;
-        if (recordToEdit.endTime.length === 5) {
-          // "HH:mm" の場合（時間だけの場合）
-          const currentDate = new Date(recordToEdit.date); // 開始日付と同じ日付を使用
-          const endTimeFormatted = `${
-            currentDate.toISOString().split("T")[0]
-          }T${recordToEdit.endTime}:00.000Z`; // 現在の日付と終了時間を結合
-          endDateObj = new Date(endTimeFormatted);
-        } else {
-          endDateObj = new Date(recordToEdit.endTime); // 既存の日付形式
-        }
-
-        if (!isNaN(endDateObj.getTime())) {
-          setEndDate(endDateObj.toISOString().split("T")[0]); // 終了日付（時間部分が抽出される）
-          setEndTime(recordToEdit.endTime); // 終了時間
-        } else {
-          console.error("無効な終了日時:", recordToEdit.endTime);
-        }
+        setEndDate(extractDateFromUTC(recordToEdit.endTime)); // 終了日付
+        setEndTime(extractTime(recordToEdit.endTime)); // 終了時間
       }
 
       setContent(recordToEdit.content);
@@ -98,12 +87,13 @@ const LearningRecordDialog = ({
 
   // フォーム送信時に呼び出す関数
   const handleSubmit = async () => {
-    // 開始日付と時間を統合して開始日時を作成
-    const startDateTime = new Date(`${date}T${startTime}:00`);
-    // 終了日付と時間を統合して終了日時を作成
-    const endDateTime = new Date(`${endDate}T${endTime}:00`);
+    // JSTからUTCに変換して開始日時を作成
+    const startDateTime = convertToUTC(date, startTime);
+    // JSTからUTCに変換して終了日時を作成
+    const endDateTime = convertToUTC(endDate, endTime);
 
-    const diffMs = endDateTime.getTime() - startDateTime.getTime();
+    const diffMs =
+      new Date(endDateTime).getTime() - new Date(startDateTime).getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -116,9 +106,9 @@ const LearningRecordDialog = ({
       supabaseUserId: user?.id ?? "",
       categoryId: categoryId ? parseInt(categoryId) : 0, // ここでカテゴリIDを保存
       title,
-      date: new Date(date), // 日付はそのまま
-      startTime: startDateTime.toISOString(), // UTCで保存
-      endTime: endDateTime.toISOString(), // UTCで保存
+      date: new Date(date), // 日付はそのまま（集計時に使用するワードとして使用）
+      startTime: startDateTime, // UTCで保存
+      endTime: endDateTime, // UTCで保存
       duration,
       content,
     };

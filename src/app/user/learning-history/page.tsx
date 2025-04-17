@@ -30,8 +30,8 @@ const LearningHistory = () => {
       categoryId: rawRecord.category.id,
       title: rawRecord.title,
       date: new Date(rawRecord.learning_date),
-      startTime: rawRecord.start_time.split("T")[1].substring(0, 5),
-      endTime: rawRecord.end_time.split("T")[1].substring(0, 5),
+      startTime: rawRecord.start_time,
+      endTime: rawRecord.end_time,
       duration: rawRecord.duration,
       content: rawRecord.content,
     };

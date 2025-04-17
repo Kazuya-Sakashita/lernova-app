@@ -12,6 +12,7 @@ import {
 import { Edit, Trash } from "lucide-react"; // 編集と削除アイコンのインポート
 import { LearningRecord } from "@/app/_types/formTypes"; // 学習記録の型をインポート
 import ActionButton from "@components/ActionButton"; // ActionButtonコンポーネントをインポート
+import { extractTime } from "@utils/timeUtils"; // timeUtils.tsからconvertToJSTをインポート
 
 // LearningRecordTablePropsの型定義
 interface LearningRecordTableProps {
@@ -19,46 +20,6 @@ interface LearningRecordTableProps {
   handleDeleteRecord: (id: string) => void; // 削除処理を行う関数
   handleEditRecord: (record: LearningRecord) => void; // 編集処理を行う関数
 }
-
-// 時間を日本時間に変換してフォーマットする関数
-const formatTimeToJST = (utcDate: string) => {
-  if (!utcDate || typeof utcDate !== "string") {
-    console.error("無効な時間: ", utcDate); // 不正な値が渡された場合にエラーメッセージを表示
-    return "無効な時間";
-  }
-
-  console.log("Received UTC Date:", utcDate); // utcDateの値を表示
-
-  // 時間が"00:00"のように日付部分がない場合は、現在の日付を補完してISO形式にする
-  if (utcDate.length === 5) {
-    const currentDate = new Date();
-    const formattedDate = `${
-      currentDate.toISOString().split("T")[0]
-    }T${utcDate}:00.000Z`; // 現在の日付と時間を結合
-    console.log("Formatted Date:", formattedDate); // 変換後の日時を確認
-    return new Date(formattedDate).toLocaleString("ja-JP", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "Asia/Tokyo", // 日本のタイムゾーンを指定
-    }); // 新しいDateオブジェクトを日本時間で表示
-  }
-
-  const date = new Date(utcDate); // UTCからDateオブジェクトを作成
-
-  // 日付が無効な場合はエラーメッセージを表示
-  if (isNaN(date.getTime())) {
-    console.error(`無効な時間: ${utcDate}`);
-    return "無効な時間";
-  }
-
-  console.log("Converted Date Object:", date); // Dateオブジェクトが有効か確認
-
-  return date.toLocaleString("ja-JP", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Tokyo", // 日本のタイムゾーンを指定
-  }); // 日本時間にフォーマットして、秒を省略
-};
 
 const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
   records,
@@ -72,6 +33,25 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
       day: "2-digit",
     });
   };
+
+  // recordsの変更を検知して開始時間でソートを行う
+  const sortedRecords = [...records].sort((a, b) => {
+    // 現在の時刻を取得
+    const now = new Date();
+
+    // aとbの開始時間をDate型に変換
+    const startTimeA = new Date(a.startTime).getTime();
+    const startTimeB = new Date(b.startTime).getTime();
+
+    // 現在の時刻との差を計算
+    const diffA = Math.abs(now.getTime() - startTimeA);
+    const diffB = Math.abs(now.getTime() - startTimeB);
+
+    // 現在に近い順に並べる
+    const result = diffA - diffB; // 小さいほど現在に近い
+
+    return result;
+  });
 
   return (
     <div className="rounded-md border">
@@ -87,21 +67,7 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
         </TableHeader>
 
         <TableBody>
-          {records.map((record: LearningRecord) => {
-            console.log("Record:", record); // 各レコードの内容を表示
-            // startTimeとendTimeを検証してDate型に変換
-            const startDate =
-              typeof record.startTime === "string"
-                ? new Date(record.startTime)
-                : record.startTime;
-            const endDate =
-              typeof record.endTime === "string"
-                ? new Date(record.endTime)
-                : record.endTime;
-
-            console.log("Start Date:", startDate);
-            console.log("End Date:", endDate);
-
+          {sortedRecords.map((record: LearningRecord) => {
             return (
               <TableRow key={record.id}>
                 <TableCell className="font-medium">{record.title}</TableCell>
@@ -116,8 +82,8 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
 
                 <TableCell>
                   {/* startTimeとendTimeを日本時間に変換して表示 */}
-                  {formatTimeToJST(record.startTime)} -{" "}
-                  {formatTimeToJST(record.endTime)}
+                  {extractTime(record.startTime)} -{" "}
+                  {extractTime(record.endTime)}
                   <div className="text-xs text-muted-foreground">
                     {record.duration}時間
                   </div>
