@@ -68,6 +68,7 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
 
         <TableBody>
           {sortedRecords.map((record: LearningRecord) => {
+            console.log("一覧表示map後record:", record); // デバッグ用
             return (
               <TableRow key={record.id}>
                 <TableCell className="font-medium">{record.title}</TableCell>

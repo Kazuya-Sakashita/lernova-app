@@ -24,6 +24,7 @@ interface LearningRecordDialogProps {
   onSaveRecord: (record: LearningRecord) => void;
   recordToEdit: LearningRecord | null;
   isEditing: boolean;
+  setRecordToEdit: (record: LearningRecord | null) => void; // 親からsetRecordToEditを受け取る
 }
 
 const LearningRecordDialog = ({
@@ -31,6 +32,7 @@ const LearningRecordDialog = ({
   onSaveRecord,
   recordToEdit,
   isEditing,
+  setRecordToEdit, // setRecordToEditを受け取る
 }: LearningRecordDialogProps) => {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(""); // 開始日付
@@ -39,7 +41,7 @@ const LearningRecordDialog = ({
   const [endTime, setEndTime] = useState(""); // 終了時間
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null); // カテゴリID
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false); // ダイアログの開閉状態
   const [categories, setCategories] = useState<Category[]>([]);
 
   const { user } = useSession();
@@ -53,7 +55,6 @@ const LearningRecordDialog = ({
       }
       const data = await response.json();
       setCategories(data); // 取得したデータをcategoriesにセット
-      console.log("取得したカテゴリー:", data); // 取得したカテゴリデータを確認
     } catch (error) {
       console.error("カテゴリー取得エラー:", error);
       alert("カテゴリーの取得に失敗しました");
@@ -76,7 +77,9 @@ const LearningRecordDialog = ({
       setContent(recordToEdit.content);
       setCategoryId(String(recordToEdit.categoryId)); // 編集時にカテゴリをセット
 
-      setOpen(true);
+      setOpen(true); // 編集時はフォームを開く
+    } else {
+      setOpen(false); // 編集しない場合はフォームを閉じる
     }
   }, [isEditing, recordToEdit]);
 
@@ -87,10 +90,13 @@ const LearningRecordDialog = ({
 
   // フォーム送信時に呼び出す関数
   const handleSubmit = async () => {
-    // JSTからUTCに変換して開始日時を作成
     const startDateTime = convertToUTC(date, startTime);
-    // JSTからUTCに変換して終了日時を作成
     const endDateTime = convertToUTC(endDate, endTime);
+
+    if (startDateTime >= endDateTime) {
+      alert("終了時間は開始時間より後でなければなりません。");
+      return;
+    }
 
     const diffMs =
       new Date(endDateTime).getTime() - new Date(startDateTime).getTime();
@@ -132,6 +138,7 @@ const LearningRecordDialog = ({
   const handleDialogClose = () => {
     setOpen(false); // ダイアログを閉じる
     resetForm(); // フォームのリセット
+    setRecordToEdit(null); // 編集をリセット
   };
 
   // フォームデータをリセットする関数
@@ -144,13 +151,6 @@ const LearningRecordDialog = ({
     setContent("");
     setCategoryId(null);
   };
-
-  // ダイアログの状態（開閉）によってフォームリセットを行う
-  useEffect(() => {
-    if (!open) {
-      resetForm();
-    }
-  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

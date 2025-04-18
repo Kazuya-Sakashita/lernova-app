@@ -4,6 +4,9 @@ import { format } from "date-fns"; // フォーマット変換
 // UTCから日本時間 (Asia/Tokyo) への変換
 const convertToJSTDate = (utcDate: string): Date => {
   const date = new Date(utcDate); // UTCをDateオブジェクト作成
+  if (isNaN(date.getTime())) {
+    throw new Error(`無効なUTC日付が渡されました: ${utcDate}`);
+  }
   return toZonedTime(date, "Asia/Tokyo"); // UTCから日本時間に変換
 };
 
@@ -22,6 +25,8 @@ export const convertToJST = (utcDate: string): string => {
 
 // 日本時間から時間部分 (HH:mm) を抽出する関数
 export const extractTime = (utcDate: string): string => {
+  console.log("extractTime関数が呼び出されました"); // デバッグ用
+  console.log("utcDate:", utcDate); // デバッグ用
   const zonedTime = convertToJSTDate(utcDate); // UTCを日本時間に変換
   return format(zonedTime, "HH:mm"); // 時間部分のみ取得
 };
