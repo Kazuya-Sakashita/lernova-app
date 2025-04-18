@@ -76,9 +76,9 @@ export const PUT = async (
       where: { id: recordId }, // PrismaではIDを数値で指定
       data: {
         title,
-        learning_date: new Date(date),
-        start_time: new Date(`2000-01-01T${startTime}:00`),
-        end_time: new Date(`2000-01-01T${endTime}:00`),
+        learning_date: date,
+        start_time: startTime,
+        end_time: endTime,
         content,
         categoryId: Number(categoryId), // categoryIdを明示的に数値型に変換
         duration,
