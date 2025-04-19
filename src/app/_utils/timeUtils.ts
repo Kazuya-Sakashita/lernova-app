@@ -36,3 +36,21 @@ export const extractDateFromUTC = (utcDate: string): string => {
   const zonedTime = convertToJSTDate(utcDate); // UTCを日本時間に変換
   return format(zonedTime, "yyyy-MM-dd"); // 日付部分のみ取得
 };
+
+/** 秒数を HH:MM:SS 形式に整形 */
+export function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return `${hours.toString().padStart(2, "0")}:${minutes
+    .toString()
+    .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+}
+
+/** 開始日時と終了日時から 「N時間M分」 形式の文字列を返す */
+export function calculateDuration(start: Date, end: Date): string {
+  const ms = end.getTime() - start.getTime();
+  const hours = Math.floor(ms / (1000 * 60 * 60));
+  const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+  return `${hours}時間${minutes}分`;
+}

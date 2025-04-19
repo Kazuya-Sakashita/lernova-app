@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@ui/dialog"; // Dialogに必要なコンポーネントをインポート
 import FormField from "./FormField";
 import { LearningRecord, Category } from "@/app/_types/formTypes";
@@ -24,7 +25,7 @@ interface LearningRecordDialogProps {
   onSaveRecord: (record: LearningRecord) => void;
   recordToEdit: LearningRecord | null;
   isEditing: boolean;
-  setRecordToEdit: (record: LearningRecord | null) => void; // 親からsetRecordToEditを受け取る
+  setRecordToEdit: React.Dispatch<React.SetStateAction<LearningRecord | null>>; // setRecordToEdit をプロパティとして受け取る
 }
 
 const LearningRecordDialog = ({
@@ -32,7 +33,7 @@ const LearningRecordDialog = ({
   onSaveRecord,
   recordToEdit,
   isEditing,
-  setRecordToEdit, // setRecordToEditを受け取る
+  setRecordToEdit,
 }: LearningRecordDialogProps) => {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(""); // 開始日付
@@ -41,7 +42,7 @@ const LearningRecordDialog = ({
   const [endTime, setEndTime] = useState(""); // 終了時間
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null); // カテゴリID
-  const [open, setOpen] = useState(false); // ダイアログの開閉状態
+  const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
 
   const { user } = useSession();
@@ -55,6 +56,7 @@ const LearningRecordDialog = ({
       }
       const data = await response.json();
       setCategories(data); // 取得したデータをcategoriesにセット
+      console.log("取得したカテゴリー:", data); // 取得したカテゴリデータを確認
     } catch (error) {
       console.error("カテゴリー取得エラー:", error);
       alert("カテゴリーの取得に失敗しました");
@@ -67,7 +69,6 @@ const LearningRecordDialog = ({
       setTitle(recordToEdit.title);
       setDate(extractDateFromUTC(recordToEdit.startTime)); // 開始日付
 
-      // UTCからJSTに変換してフォームに表示
       setStartTime(extractTime(recordToEdit.startTime)); // 開始時間
       if (recordToEdit.endTime) {
         setEndDate(extractDateFromUTC(recordToEdit.endTime)); // 終了日付
@@ -77,22 +78,26 @@ const LearningRecordDialog = ({
       setContent(recordToEdit.content);
       setCategoryId(String(recordToEdit.categoryId)); // 編集時にカテゴリをセット
 
-      setOpen(true); // 編集時はフォームを開く
+      setOpen(true); // 編集モードでフォームを開く
     } else {
-      setOpen(false); // 編集しない場合はフォームを閉じる
+      setOpen(false); // 編集時以外は閉じる
     }
   }, [isEditing, recordToEdit]);
 
-  // カテゴリ情報の取得
-  useEffect(() => {
-    fetchCategories(); // マウント時にカテゴリ情報を取得
-  }, []);
+  // ダイアログを閉じる処理
+  const handleDialogClose = () => {
+    setOpen(false); // ダイアログを閉じる
+    setRecordToEdit(null); // 編集対象をリセット
+  };
 
   // フォーム送信時に呼び出す関数
   const handleSubmit = async () => {
+    // JSTからUTCに変換して開始日時を作成
     const startDateTime = convertToUTC(date, startTime);
+    // JSTからUTCに変換して終了日時を作成
     const endDateTime = convertToUTC(endDate, endTime);
 
+    // 開始時間が終了時間よりも後の場合、エラーメッセージを表示して処理を中止
     if (startDateTime >= endDateTime) {
       alert("終了時間は開始時間より後でなければなりません。");
       return;
@@ -135,10 +140,10 @@ const LearningRecordDialog = ({
   };
 
   // ダイアログを閉じた時にデータをリセット
-  const handleDialogClose = () => {
+  const handleDialogCloseCancel = () => {
     setOpen(false); // ダイアログを閉じる
     resetForm(); // フォームのリセット
-    setRecordToEdit(null); // 編集をリセット
+    setRecordToEdit(null); // 編集対象をリセット
   };
 
   // フォームデータをリセットする関数
@@ -151,6 +156,13 @@ const LearningRecordDialog = ({
     setContent("");
     setCategoryId(null);
   };
+
+  // ダイアログの状態（開閉）によってフォームリセットを行う
+  useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -167,6 +179,29 @@ const LearningRecordDialog = ({
           <DialogTitle>
             {isEditing ? "学習記録を編集" : "学習記録を追加"}
           </DialogTitle>
+          {/* 右上のXアイコン */}
+          <DialogClose asChild>
+            <Button
+              onClick={handleDialogCloseCancel} // 「X」ボタンでキャンセルの動作を実行
+              className="text-gray-500 hover:bg-gray-300"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-x h-4 w-4"
+              >
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+            </Button>
+          </DialogClose>
         </DialogHeader>
         <div id="dialog-description" className="text-sm text-gray-500">
           {isEditing
@@ -196,7 +231,6 @@ const LearningRecordDialog = ({
               )}
             </select>
           </div>
-
           <FormField
             label="タイトル"
             id="title"
@@ -250,7 +284,7 @@ const LearningRecordDialog = ({
           </Button>
           <Button
             type="button"
-            onClick={handleDialogClose} // ダイアログを閉じる
+            onClick={handleDialogCloseCancel}
             className="bg-gray-300 hover:bg-gray-400"
           >
             キャンセル
