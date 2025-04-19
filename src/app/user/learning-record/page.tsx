@@ -1,3 +1,4 @@
+// src/app/user/learning-record/page.tsx
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -17,20 +18,20 @@ const STORAGE_KEY = "lernova_learning_records";
 
 export default function TimeInputPage() {
   const router = useRouter();
+  const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [newCategory, setNewCategory] = useState("");
-  const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isLearning, setIsLearning] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [recentLearning, setRecentLearning] = useState<LearningRecord[]>([]);
 
-  // localStorage から一度だけ読み込み
+  // 一度だけロード
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
       try {
-        const arr = (JSON.parse(saved) as RawLearningRecord[]).map((r) => ({
+        const arr = (JSON.parse(raw) as RawLearningRecord[]).map((r) => ({
           id: r.id,
           title: r.title,
           category: r.category,
@@ -45,27 +46,22 @@ export default function TimeInputPage() {
     }
   }, []);
 
-  // スタート
   const handleStart = useCallback(() => {
-    if (!title) {
+    if (!title)
       return toast({ title: "タイトルが必要です", variant: "destructive" });
-    }
-    if (!category && !newCategory) {
+    if (!category && !newCategory)
       return toast({ title: "カテゴリが必要です", variant: "destructive" });
-    }
     setIsLearning(true);
     const now = new Date();
     setStartTime(now);
     localStorage.setItem("learning_start_time", now.toISOString());
-    toast({ title: "学習タイマー開始", description: `${title}を記録中` });
+    toast({ title: "タイマー開始", description: `${title} を記録中` });
   }, [title, category, newCategory]);
 
-  // ストップ
   const handleStop = useCallback(() => {
     const st = localStorage.getItem("learning_start_time");
-    if (!st) {
+    if (!st)
       return toast({ title: "開始時間がありません", variant: "destructive" });
-    }
     const start = new Date(st);
     const end = new Date();
     const sec = Math.floor((end.getTime() - start.getTime()) / 1000);
@@ -87,17 +83,16 @@ export default function TimeInputPage() {
       endTime: rec.endTime.toISOString(),
     });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
-
     setRecentLearning((prev) => [rec, ...prev].slice(0, 5));
+
     setIsLearning(false);
     setStartTime(null);
     toast({
       title: "学習停止",
-      description: `${formatTime(sec)} の学習を記録しました`,
+      description: `${formatTime(sec)} が記録されました`,
     });
   }, [title, category, newCategory, content]);
 
-  // リセット
   const handleReset = useCallback(() => {
     setIsLearning(false);
     setStartTime(null);
@@ -108,7 +103,6 @@ export default function TimeInputPage() {
     toast({ title: "リセットしました" });
   }, []);
 
-  // 「すべて表示」ボタン
   const onViewAll = useCallback(() => {
     router.push("/user/learning-record");
   }, [router]);

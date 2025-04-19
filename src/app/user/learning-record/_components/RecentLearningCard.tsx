@@ -1,18 +1,12 @@
+// src/app/user/learning-record/_components/RecentLearningCard.tsx
+
 "use client";
 
 import React from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@ui/card";
 import { Button } from "@ui/button";
-import { Badge } from "@ui/badge";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
-import { calculateDuration } from "@/app/_utils/timeUtils";
 
 export interface LearningRecord {
   id: string;
@@ -28,48 +22,37 @@ interface Props {
   onViewAll: () => void;
 }
 
-export default function RecentLearningCard({
-  recentLearning,
-  onViewAll,
-}: Props) {
-  return (
-    <Card>
-      <CardHeader className="flex items-center justify-between">
-        <div>
-          <CardTitle>最近の学習記録</CardTitle>
-          <CardDescription>直近の学習記録</CardDescription>
-        </div>
-        <Button variant="outline" size="sm" onClick={onViewAll}>
-          すべて表示
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {recentLearning.length > 0 ? (
-          <div className="space-y-4">
-            {recentLearning.map((r) => (
-              <div key={r.id} className="border-b pb-3 last:border-0 last:pb-0">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-medium">{r.title}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {format(r.startTime, "yyyy/MM/dd", { locale: ja })} ・
-                      {calculateDuration(r.startTime, r.endTime)}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="bg-pink-50">
-                    {r.category}
-                  </Badge>
-                </div>
-                {r.content && (
-                  <p className="text-sm mt-1 line-clamp-2">{r.content}</p>
-                )}
-              </div>
-            ))}
+const RecentLearningCard: React.FC<Props> = ({ recentLearning, onViewAll }) => (
+  <Card>
+    <CardHeader className="flex justify-between items-center">
+      <CardTitle>最近の学習記録</CardTitle>
+      <Button size="sm" variant="outline" onClick={onViewAll}>
+        すべて表示
+      </Button>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      {recentLearning.length === 0 ? (
+        <p className="text-muted-foreground">記録がありません</p>
+      ) : (
+        recentLearning.map((r) => (
+          <div key={r.id} className="border-b pb-2">
+            <h4 className="font-medium">{r.title}</h4>
+            <p className="text-sm text-muted-foreground">
+              {format(r.startTime, "yyyy/MM/dd", { locale: ja })}・
+              {Math.floor(
+                (r.endTime.getTime() - r.startTime.getTime()) / 60000
+              )}
+              分
+            </p>
+            {/* ← ここで学習内容を表示 */}
+            {r.content && (
+              <p className="text-sm mt-1 line-clamp-2">{r.content}</p>
+            )}
           </div>
-        ) : (
-          <p className="text-muted-foreground">最近の学習記録はありません。</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+        ))
+      )}
+    </CardContent>
+  </Card>
+);
+
+export default React.memo(RecentLearningCard);

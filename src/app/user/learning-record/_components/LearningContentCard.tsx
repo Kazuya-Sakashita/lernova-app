@@ -1,3 +1,4 @@
+// src/app/user/learning-record/_components/LearningContentCard.tsx
 "use client";
 
 import React from "react";
@@ -24,7 +25,7 @@ export default function LearningContentCard({ content, setContent }: Props) {
       </CardHeader>
       <CardContent>
         <Textarea
-          placeholder="学習内容を入力（例：プログラミング学習2時間）"
+          placeholder="学習内容を入力（例：プログラミング学習 2時間）"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           className="min-h-[120px]"

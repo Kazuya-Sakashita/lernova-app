@@ -1,3 +1,4 @@
+// src/app/user/learning-record/_components/LearningTimerCard.tsx
 "use client";
 
 import React from "react";
@@ -10,8 +11,6 @@ import {
 } from "@ui/card";
 import { Button } from "@ui/button";
 import { PlayCircle, StopCircle, RotateCcw } from "lucide-react";
-import { format } from "date-fns";
-import { ja } from "date-fns/locale";
 import Timer from "./Timer";
 
 interface Props {
@@ -22,7 +21,7 @@ interface Props {
   handleReset: () => void;
 }
 
-export default function LearningTimerCard({
+export default React.memo(function LearningTimerCard({
   isLearning,
   startTime,
   handleStart,
@@ -37,26 +36,12 @@ export default function LearningTimerCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <Timer isLearning={isLearning} startTime={startTime} />
-
-        {isLearning && startTime && (
-          <p className="text-sm text-gray-500 text-center">
-            開始時間:{" "}
-            {format(startTime, "yyyy/MM/dd HH:mm:ss", {
-              locale: ja,
-            })}
-          </p>
-        )}
-
         <div className="flex gap-2">
-          {!isLearning && (
-            <Button
-              onClick={handleStart}
-              className="flex-1 bg-pink-500 hover:bg-pink-600"
-            >
+          {!isLearning ? (
+            <Button onClick={handleStart} className="flex-1 bg-pink-500">
               <PlayCircle className="mr-2 h-4 w-4" /> スタート
             </Button>
-          )}
-          {isLearning && (
+          ) : (
             <Button
               onClick={handleStop}
               variant="destructive"
@@ -72,4 +57,4 @@ export default function LearningTimerCard({
       </CardContent>
     </Card>
   );
-}
+});

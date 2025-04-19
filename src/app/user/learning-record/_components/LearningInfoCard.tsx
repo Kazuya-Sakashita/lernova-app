@@ -1,3 +1,4 @@
+// src/app/user/learning-record/_components/LearningInfoCard.tsx
 "use client";
 
 import React from "react";
@@ -40,7 +41,9 @@ export default function LearningInfoCard({
     <Card>
       <CardHeader>
         <CardTitle>学習情報</CardTitle>
-        <CardDescription>タイトルとカテゴリを入力してください</CardDescription>
+        <CardDescription>
+          学習内容のタイトルとカテゴリを入力してください
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -55,7 +58,6 @@ export default function LearningInfoCard({
             disabled={isLearning}
           />
         </div>
-
         <div className="space-y-2">
           <label htmlFor="category" className="text-sm font-medium">
             カテゴリ
@@ -86,7 +88,6 @@ export default function LearningInfoCard({
             </SelectContent>
           </Select>
         </div>
-
         {category === "その他" && (
           <div className="space-y-2">
             <label htmlFor="newCategory" className="text-sm font-medium">
