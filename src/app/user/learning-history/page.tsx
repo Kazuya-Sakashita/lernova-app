@@ -91,9 +91,6 @@ const LearningHistory = () => {
       const savedRecord = await response.json();
       console.log("新規学習記録が保存されました:", savedRecord);
 
-      // 保存されたレコードをstateに追加
-      setRecords([savedRecord, ...records]);
-
       // 学習記録一覧を再取得
       fetchLearningRecords();
     } catch (error) {
