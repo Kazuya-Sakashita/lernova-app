@@ -37,16 +37,38 @@ export default function Home() {
       : `先週比 ${diff > 0 ? "+" : ""}${diff.toFixed(1)}時間`;
 
   // 週間チャート用のダミーデータ
-  const chartData = {
-    labels: ["月", "火", "水", "木", "金", "土", "日"],
-    datasets: [
-      {
-        label: "学習時間",
-        data: [2, 3, 1.5, 4, 2.5, 3.5, 2], // ダミー値
-        backgroundColor: "rgba(75, 192, 192, 0.6)",
-      },
-    ],
-  };
+  // 今週の曜日別学習時間（棒グラフ用）を取得
+  const { data: weeklyChart } = useSWR(
+    user?.supabaseUserId
+      ? `/api/user/weekly-chart-data?supabaseUserId=${user.supabaseUserId}`
+      : null,
+    fetcher
+  );
+
+  // SWRから取得した棒グラフ用データを Chart.js 形式に変換
+  const chartData = weeklyChart
+    ? {
+        labels: weeklyChart.labels,
+        datasets: [
+          {
+            label: "学習時間",
+            data: weeklyChart.data,
+            backgroundColor: "rgba(75, 192, 192, 0.6)",
+          },
+        ],
+      }
+    : {
+        labels: ["月", "火", "水", "木", "金", "土", "日"],
+        datasets: [
+          {
+            label: "学習時間",
+            data: [0, 0, 0, 0, 0, 0, 0],
+            backgroundColor: "rgba(75, 192, 192, 0.6)",
+          },
+        ],
+      };
+
+  console.log("📊 週間チャートデータ:", chartData);
 
   // カテゴリ別円グラフのダミーデータ
   const categoryData = {
