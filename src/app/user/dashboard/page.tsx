@@ -2,22 +2,24 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { useSession } from "@utils/session"; // Supabase セッション情報を取得
+import { useSession } from "@utils/session";
 import DashboardHeader from "@/app/user/dashboard/_components/DashboardHeader";
 import DashboardStats from "@/app/user/dashboard/_components/DashboardStats";
 import WeeklyCharts from "@/app/user/dashboard/_components/WeeklyCharts";
 import HeatmapSection from "@/app/user/dashboard/_components/HeatmapSection";
 import RecentRecords from "@/app/user/dashboard/_components/RecentRecords";
 import MonthlyGoals from "@/app/user/dashboard/_components/MonthlyGoals";
-
-// API フェッチ用の関数
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+import { fetcher } from "@utils/fetcher";
 
 export default function Home() {
-  // 認証済みユーザー情報を取得
+  // -----------------------------
+  // 認証済みユーザー情報の取得
+  // -----------------------------
   const { user } = useSession();
 
-  // 今週と先週の学習時間データを取得
+  // -----------------------------
+  // 今週と先週の合計学習時間を取得（棒グラフ概要・差分表示用）
+  // -----------------------------
   const { data } = useSWR(
     user?.supabaseUserId
       ? `/api/user/weekly-learning-duration?supabaseUserId=${user.supabaseUserId}`
@@ -25,19 +27,19 @@ export default function Home() {
     fetcher
   );
 
-  // 今週と先週の合計学習時間（0がデフォルト）
   const weeklyDuration = data?.weeklyDuration ?? 0;
   const lastWeekDuration = data?.lastWeekDuration ?? 0;
 
-  // 差分の計算とテキスト生成
+  // 差分の計算・テキスト化
   const diff = weeklyDuration - lastWeekDuration;
   const diffText =
     diff === 0
       ? "先週と同じ"
       : `先週比 ${diff > 0 ? "+" : ""}${diff.toFixed(1)}時間`;
 
-  // 週間チャート用のダミーデータ
-  // 今週の曜日別学習時間（棒グラフ用）を取得
+  // -----------------------------
+  // 曜日別の週間学習データを取得（棒グラフ用）
+  // -----------------------------
   const { data: weeklyChart } = useSWR(
     user?.supabaseUserId
       ? `/api/user/weekly-chart-data?supabaseUserId=${user.supabaseUserId}`
@@ -45,7 +47,7 @@ export default function Home() {
     fetcher
   );
 
-  // SWRから取得した棒グラフ用データを Chart.js 形式に変換
+  // 取得データを Chart.js 形式に整形（未取得時は初期値でフォールバック）
   const chartData = weeklyChart
     ? {
         labels: weeklyChart.labels,
@@ -70,34 +72,55 @@ export default function Home() {
 
   console.log("📊 週間チャートデータ:", chartData);
 
-  // カテゴリ別円グラフのダミーデータ
-  const categoryData = {
-    labels: ["プログラミング", "語学", "数学", "科学", "歴史"],
-    datasets: [
-      {
-        data: [30, 20, 15, 25, 10], // ダミー値
-        backgroundColor: [
-          "rgba(255, 99, 132, 0.6)",
-          "rgba(54, 162, 235, 0.6)",
-          "rgba(255, 206, 86, 0.6)",
-          "rgba(75, 192, 192, 0.6)",
-          "rgba(153, 102, 255, 0.6)",
-        ],
-      },
-    ],
-  };
+  // -----------------------------
+  // カテゴリ別学習時間を取得（円グラフ用）
+  // -----------------------------
+  const { data: categoryRaw } = useSWR(
+    user?.supabaseUserId
+      ? `/api/user/category-distribution?supabaseUserId=${user.supabaseUserId}`
+      : null,
+    fetcher
+  );
 
-  // ヒートマップ用のランダムな90日分データ
+  // カテゴリ別データを Chart.js 形式に整形（未取得時は空データ）
+  const categoryData = categoryRaw
+    ? {
+        labels: categoryRaw.labels,
+        datasets: [
+          {
+            data: categoryRaw.data,
+            backgroundColor: [
+              "rgba(255, 99, 132, 0.6)",
+              "rgba(54, 162, 235, 0.6)",
+              "rgba(255, 206, 86, 0.6)",
+              "rgba(75, 192, 192, 0.6)",
+              "rgba(153, 102, 255, 0.6)",
+            ],
+          },
+        ],
+      }
+    : {
+        labels: [],
+        datasets: [{ data: [], backgroundColor: [] }],
+      };
+
+  console.log("📊 カテゴリ別データ:", categoryData);
+
+  // -----------------------------
+  // ヒートマップ表示用の仮データ（直近90日間の学習量）
+  // -----------------------------
   const [heatmapData] = useState(() => {
     const today = new Date();
     return Array.from({ length: 90 }, (_, i) => {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      return { date, hours: Math.random() * 5 }; // 0〜5時間の範囲でランダム生成
+      return { date, hours: Math.random() * 5 };
     });
   });
 
-  // ダッシュボードUIの描画
+  // -----------------------------
+  // ダッシュボード表示UI
+  // -----------------------------
   return (
     <div className="space-y-6">
       <DashboardHeader />
