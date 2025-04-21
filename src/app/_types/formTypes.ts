@@ -83,3 +83,12 @@ export interface FormFieldProps {
   onChange: (value: string) => void; // 値が変更された際に呼ばれる関数
   type: string; // 入力のタイプ（"text", "textarea", "date", "time" など）
 }
+
+export interface RawLearningRecord {
+  id: string;
+  title: string;
+  category_id: number;
+  start_time: string;
+  end_time: string;
+  content: string;
+}
