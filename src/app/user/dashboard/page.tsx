@@ -3,12 +3,12 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { useSession } from "@utils/session"; // Supabase セッション情報を取得
-import DashboardHeader from "@/app/user/_components/DashboardHeader";
-import DashboardStats from "@/app/user/_components/DashboardStats";
-import WeeklyCharts from "@/app/user/_components/WeeklyCharts";
-import HeatmapSection from "@/app/user/_components/HeatmapSection";
-import RecentRecords from "@/app/user/_components/RecentRecords";
-import MonthlyGoals from "@/app/user/_components/MonthlyGoals";
+import DashboardHeader from "@/app/user/dashboard/_components/DashboardHeader";
+import DashboardStats from "@/app/user/dashboard/_components/DashboardStats";
+import WeeklyCharts from "@/app/user/dashboard/_components/WeeklyCharts";
+import HeatmapSection from "@/app/user/dashboard/_components/HeatmapSection";
+import RecentRecords from "@/app/user/dashboard/_components/RecentRecords";
+import MonthlyGoals from "@/app/user/dashboard/_components/MonthlyGoals";
 
 // API フェッチ用の関数
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
