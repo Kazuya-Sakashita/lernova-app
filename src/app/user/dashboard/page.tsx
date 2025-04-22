@@ -1,54 +1,47 @@
 "use client";
 
-// 必要なHooksやコンポーネントをインポート
+// フロントエンド用のフックと各種コンポーネントをインポート
 import useSWR from "swr";
-import { useSession } from "@utils/session"; // 認証済みユーザー情報の取得
+import { useSession } from "@utils/session";
 import DashboardHeader from "@/app/user/dashboard/_components/DashboardHeader";
 import DashboardStats from "@/app/user/dashboard/_components/DashboardStats";
 import WeeklyCharts from "@/app/user/dashboard/_components/WeeklyCharts";
 import HeatmapSection from "@/app/user/dashboard/_components/HeatmapSection";
 import RecentRecords from "@/app/user/dashboard/_components/RecentRecords";
 import MonthlyGoals from "@/app/user/dashboard/_components/MonthlyGoals";
-import { fetcher } from "@utils/fetcher"; // 共通のデータフェッチ関数
+import { fetcher } from "@utils/fetcher"; // SWRで使用する共通フェッチ関数
 
 export default function Home() {
-  // -------------------------------
-  // 認証済みユーザー情報の取得
-  // -------------------------------
+  // ログイン中のユーザー情報を取得
   const { user } = useSession();
+  const userId = user?.supabaseUserId;
 
-  // -------------------------------
-  // 今週と先週の合計学習時間データを取得
-  // -------------------------------
-  const { data } = useSWR(
-    user?.supabaseUserId
-      ? `/api/user/weekly-learning-duration?supabaseUserId=${user.supabaseUserId}`
+  // =============================
+  // 1. 今週と先週の学習時間を取得
+  // =============================
+  const { data: weeklyDurationData } = useSWR(
+    userId
+      ? `/api/user/weekly-learning-duration?supabaseUserId=${userId}`
       : null,
     fetcher
   );
 
-  // デフォルトは 0 時間
-  const weeklyDuration = data?.weeklyDuration ?? 0;
-  const lastWeekDuration = data?.lastWeekDuration ?? 0;
-
-  // 差分テキスト生成（±表示）
+  const weeklyDuration = weeklyDurationData?.weeklyDuration ?? 0;
+  const lastWeekDuration = weeklyDurationData?.lastWeekDuration ?? 0;
   const diff = weeklyDuration - lastWeekDuration;
   const diffText =
     diff === 0
       ? "先週と同じ"
       : `先週比 ${diff > 0 ? "+" : ""}${diff.toFixed(1)}時間`;
 
-  // -------------------------------
-  // 曜日別の週間学習時間データを取得（棒グラフ用）
-  // -------------------------------
+  // =============================
+  // 2. 曜日別の週間学習時間（棒グラフ）を取得
+  // =============================
   const { data: weeklyChart } = useSWR(
-    user?.supabaseUserId
-      ? `/api/user/weekly-chart-data?supabaseUserId=${user.supabaseUserId}`
-      : null,
+    userId ? `/api/user/weekly-chart-data?supabaseUserId=${userId}` : null,
     fetcher
   );
 
-  // Chart.js 形式に整形（未取得時は初期値）
   const chartData = weeklyChart
     ? {
         labels: weeklyChart.labels,
@@ -71,19 +64,14 @@ export default function Home() {
         ],
       };
 
-  console.log("📊 週間チャートデータ:", chartData);
-
-  // -------------------------------
-  // カテゴリ別学習時間データを取得（円グラフ用）
-  // -------------------------------
+  // =============================
+  // 3. カテゴリ別の学習時間（円グラフ）を取得
+  // =============================
   const { data: categoryRaw } = useSWR(
-    user?.supabaseUserId
-      ? `/api/user/category-distribution?supabaseUserId=${user.supabaseUserId}`
-      : null,
+    userId ? `/api/user/category-distribution?supabaseUserId=${userId}` : null,
     fetcher
   );
 
-  // Chart.js 形式に整形（未取得時は空）
   const categoryData = categoryRaw
     ? {
         labels: categoryRaw.labels,
@@ -105,40 +93,49 @@ export default function Home() {
         datasets: [{ data: [], backgroundColor: [] }],
       };
 
-  console.log("📊 カテゴリ別データ:", categoryData);
-
-  // -------------------------------
-  // ヒートマップ用データを取得（直近90日分）
-  // -------------------------------
+  // =============================
+  // 4. ヒートマップ用データ（直近90日）を取得
+  // =============================
   const { data: heatmapData } = useSWR(
-    user?.supabaseUserId
-      ? `/api/user/heatmap?supabaseUserId=${user.supabaseUserId}`
+    userId ? `/api/user/heatmap?supabaseUserId=${userId}` : null,
+    fetcher
+  );
+
+  // =============================
+  // 5. 最近の学習記録（最新5件）を取得
+  // =============================
+  const { data: recentRecords } = useSWR(
+    userId
+      ? `/api/user/recent-learning-records?supabaseUserId=${userId}`
       : null,
     fetcher
   );
 
-  console.log("🔥 ヒートマップデータ:", heatmapData);
+  // =============================
+  // ログインしていない場合はnullを返す（保護）
+  // =============================
+  if (!userId) return null;
 
-  // -------------------------------
-  // ダッシュボードの描画
-  // -------------------------------
+  // =============================
+  // UI描画
+  // =============================
   return (
     <div className="space-y-6">
       {/* ヘッダー */}
       <DashboardHeader />
 
-      {/* 今週の統計（合計時間・差分） */}
+      {/* 今週の学習統計 */}
       <DashboardStats weeklyDuration={weeklyDuration} diffText={diffText} />
 
-      {/* チャート：棒グラフと円グラフ */}
+      {/* 週間学習時間（棒グラフ）＋ カテゴリ別学習（円グラフ） */}
       <WeeklyCharts chartData={chartData} categoryData={categoryData} />
 
-      {/* ヒートマップ（直近90日） */}
+      {/* ヒートマップ */}
       <HeatmapSection data={heatmapData ?? []} />
 
       {/* 最近の記録 & 今月の目標 */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <RecentRecords />
+        <RecentRecords records={recentRecords ?? []} />
         <MonthlyGoals />
       </div>
     </div>
