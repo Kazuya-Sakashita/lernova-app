@@ -27,8 +27,8 @@ interface RecentRecordsProps {
 
 const RecentRecords = ({ records }: RecentRecordsProps) => {
   const today = new Date();
-  console.log("today", today);
-  console.log("records", records);
+  console.log("📅 今日の日付:", today);
+  console.log("🗂️ レコード数:", records.length);
 
   return (
     <Card className="col-span-2">
@@ -39,6 +39,15 @@ const RecentRecords = ({ records }: RecentRecordsProps) => {
       <CardContent>
         <div className="space-y-4">
           {records.map((record) => {
+            console.log("🔍 Record詳細:", {
+              id: record.id,
+              title: record.title,
+              duration: record.duration,
+              content: record.content,
+              learning_date: record.learning_date,
+              daysAgo: record.daysAgo,
+            });
+
             return (
               <div key={record.id} className="flex items-center">
                 <div className="w-2 h-2 rounded-full bg-pink-500 mr-2" />

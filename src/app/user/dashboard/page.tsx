@@ -14,10 +14,10 @@ import { fetcher } from "@utils/fetcher"; // SWRで使用する共通フェッ�
 export default function Home() {
   // ログイン中のユーザー情報を取得
   const { user } = useSession();
-  const userId = user?.supabaseUserId;
+  const userId = user?.supabaseUserId ?? ""; // 空文字を使って条件付きuseSWRを避ける
 
   // =============================
-  // 1. 今週と先週の学習時間を取得
+  // 各種データの取得（userIdが空でも順番を崩さずにフック呼び出し）
   // =============================
   const { data: weeklyDurationData } = useSWR(
     userId
@@ -26,6 +26,36 @@ export default function Home() {
     fetcher
   );
 
+  const { data: weeklyChart } = useSWR(
+    userId ? `/api/user/weekly-chart-data?supabaseUserId=${userId}` : null,
+    fetcher
+  );
+
+  const { data: categoryRaw } = useSWR(
+    userId ? `/api/user/category-distribution?supabaseUserId=${userId}` : null,
+    fetcher
+  );
+
+  const { data: heatmapData } = useSWR(
+    userId ? `/api/user/heatmap?supabaseUserId=${userId}` : null,
+    fetcher
+  );
+
+  const { data: recentRecords } = useSWR(
+    userId
+      ? `/api/user/recent-learning-records?supabaseUserId=${userId}`
+      : null,
+    fetcher
+  );
+
+  const { data: streakData } = useSWR(
+    userId ? `/api/user/learning-streak?supabaseUserId=${userId}` : null,
+    fetcher
+  );
+
+  // =============================
+  // データ整形
+  // =============================
   const weeklyDuration = weeklyDurationData?.weeklyDuration ?? 0;
   const lastWeekDuration = weeklyDurationData?.lastWeekDuration ?? 0;
   const diff = weeklyDuration - lastWeekDuration;
@@ -33,14 +63,6 @@ export default function Home() {
     diff === 0
       ? "先週と同じ"
       : `先週比 ${diff > 0 ? "+" : ""}${diff.toFixed(1)}時間`;
-
-  // =============================
-  // 2. 曜日別の週間学習時間（棒グラフ）を取得
-  // =============================
-  const { data: weeklyChart } = useSWR(
-    userId ? `/api/user/weekly-chart-data?supabaseUserId=${userId}` : null,
-    fetcher
-  );
 
   const chartData = weeklyChart
     ? {
@@ -64,14 +86,6 @@ export default function Home() {
         ],
       };
 
-  // =============================
-  // 3. カテゴリ別の学習時間（円グラフ）を取得
-  // =============================
-  const { data: categoryRaw } = useSWR(
-    userId ? `/api/user/category-distribution?supabaseUserId=${userId}` : null,
-    fetcher
-  );
-
   const categoryData = categoryRaw
     ? {
         labels: categoryRaw.labels,
@@ -93,28 +107,13 @@ export default function Home() {
         datasets: [{ data: [], backgroundColor: [] }],
       };
 
-  // =============================
-  // 4. ヒートマップ用データ（直近90日）を取得
-  // =============================
-  const { data: heatmapData } = useSWR(
-    userId ? `/api/user/heatmap?supabaseUserId=${userId}` : null,
-    fetcher
-  );
+  const learningStreak = streakData?.streak ?? 0;
+  const bestStreak = streakData?.bestStreak ?? 0;
 
   // =============================
-  // 5. 最近の学習記録（最新5件）を取得
+  // ログインしていない場合は描画しない
   // =============================
-  const { data: recentRecords } = useSWR(
-    userId
-      ? `/api/user/recent-learning-records?supabaseUserId=${userId}`
-      : null,
-    fetcher
-  );
-
-  // =============================
-  // ログインしていない場合はnullを返す（保護）
-  // =============================
-  if (!userId) return null;
+  if (!user?.supabaseUserId) return null;
 
   // =============================
   // UI描画
@@ -124,8 +123,13 @@ export default function Home() {
       {/* ヘッダー */}
       <DashboardHeader />
 
-      {/* 今週の学習統計 */}
-      <DashboardStats weeklyDuration={weeklyDuration} diffText={diffText} />
+      {/* 今週の学習統計（継続日数含む） */}
+      <DashboardStats
+        weeklyDuration={weeklyDuration}
+        diffText={diffText}
+        learningStreak={learningStreak}
+        bestStreak={bestStreak}
+      />
 
       {/* 週間学習時間（棒グラフ）＋ カテゴリ別学習（円グラフ） */}
       <WeeklyCharts chartData={chartData} categoryData={categoryData} />
