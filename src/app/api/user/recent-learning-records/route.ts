@@ -25,10 +25,11 @@ export async function GET(req: NextRequest) {
       supabaseUserId,
     },
     orderBy: {
-      learning_date: "desc", // 新しい順
+      learning_date: "desc",
     },
     take: 7,
     select: {
+      id: true,
       title: true,
       content: true,
       duration: true,

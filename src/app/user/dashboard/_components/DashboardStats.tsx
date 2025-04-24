@@ -6,9 +6,16 @@ import { BarChart, BookOpen, Clock, Users } from "lucide-react";
 interface DashboardStatsProps {
   weeklyDuration: number;
   diffText: string;
+  learningStreak: number;
+  bestStreak: number;
 }
 
-const DashboardStats = ({ weeklyDuration, diffText }: DashboardStatsProps) => {
+const DashboardStats = ({
+  weeklyDuration,
+  diffText,
+  learningStreak,
+  bestStreak,
+}: DashboardStatsProps) => {
   const stats = [
     {
       title: "今週の学習時間",
@@ -25,8 +32,11 @@ const DashboardStats = ({ weeklyDuration, diffText }: DashboardStatsProps) => {
     {
       title: "継続日数",
       icon: <BarChart className="h-4 w-4 text-muted-foreground" />,
-      value: "21日",
-      note: "自己ベスト更新中！",
+      value: `${learningStreak}日`,
+      note:
+        learningStreak >= bestStreak
+          ? "🎉 自己ベスト更新中！"
+          : `自己ベスト: ${bestStreak}日`,
     },
     {
       title: "フォロワー",
