@@ -66,7 +66,7 @@ const RecentRecords = ({ records }: RecentRecordsProps) => {
             );
           })}
         </div>
-        <Link href="/user/learning-record">
+        <Link href="/user/learning-history">
           <Button variant="outline" className="w-full mt-4">
             すべての記録を見る
           </Button>
