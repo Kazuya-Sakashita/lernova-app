@@ -78,7 +78,6 @@ export default function TimeInputPage() {
   }, [title, category, newCategory]);
 
   // タイマー停止＋サーバー保存
-  // タイマー停止＋サーバー保存
   const handleStop = useCallback(async () => {
     const st = localStorage.getItem("learning_start_time");
     if (!st)
@@ -166,7 +165,7 @@ export default function TimeInputPage() {
 
   // 全件画面へ
   const onViewAll = useCallback(() => {
-    router.push("/user/learning-record");
+    router.push("/user/learning-history");
   }, [router]);
 
   return (
