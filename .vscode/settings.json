@@ -1,3 +1,23 @@
 {
+  // ファイル監視対象から除外してVSCodeを軽くする
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.git/**": true,
+    "**/.next/**": true,
+    "**/dist/**": true,
+    "**/out/**": true,
+    "**/.turbo/**": true
+  },
+
+  // ファイル検索対象からも除外する
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true,
+    "**/out": true,
+    "**/.turbo": true
+  },
+
+  // スペルチェック (cSpell) で "lernova" を単語リストに追加
   "cSpell.words": ["lernova"]
 }
