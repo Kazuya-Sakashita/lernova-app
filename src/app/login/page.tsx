@@ -84,7 +84,7 @@ export default function LoginPage() {
 
     // ログイン成功時、ホームページにリダイレクト
     if (user) {
-      router.push("/"); // ログイン成功後、ホームページにリダイレクト
+      router.push("/user/dashboard"); // ログイン成功後、ホームページにリダイレクト
     }
   };
 
