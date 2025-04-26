@@ -22,23 +22,39 @@ function getDateDiffInDays(date1: Date, date2: Date): number {
 
 /**
  * 📚 与えられた日付セットから「直近の連続学習日数」を計算する
+ *
+ * @param dates - "yyyy-MM-dd" 形式の日付文字列の集合（Set）
+ * @param today - 計算の基準日（省略時は現在の日付）
+ * @returns 直近の連続学習日数（streak）
  */
-export function calculateStreak(
-  dates: Set<string>,
-  today = new Date()
-): number {
+export function calculateStreak(dates: Set<string>, today = new Date()) {
   let streak = 0;
-  const current = new Date(today);
+  let current: Date;
 
-  for (let i = 0; i < DAYS_RANGE; i++) {
-    const dateStr = formatDate(current);
+  const todayStr = format(today, "yyyy-MM-dd");
+  const yesterdayStr = format(subDays(today, 1), "yyyy-MM-dd");
+
+  // ✅ 今日に記録がある場合は今日から、なければ昨日から数え始める
+  if (dates.has(todayStr)) {
+    current = new Date(today);
+  } else if (dates.has(yesterdayStr)) {
+    current = subDays(today, 1);
+  } else {
+    // 今日も昨日も記録がない場合は streak=0
+    return 0;
+  }
+
+  // 📆 最大90日前まで遡って、連続した日数をカウントする
+  for (let i = 0; i < 90; i++) {
+    const dateStr = format(current, "yyyy-MM-dd");
     if (dates.has(dateStr)) {
-      streak++;
-      current.setDate(current.getDate() - 1);
+      streak++; // 記録があればカウントを増やす
+      current.setDate(current.getDate() - 1); // 1日戻る
     } else {
-      break;
+      break; // 連続していなければ終了
     }
   }
+
   return streak;
 }
 
