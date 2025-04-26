@@ -16,7 +16,7 @@ interface Props {
 const HeatmapSection = ({ data }: Props) => (
   <Card className="col-span-full">
     <CardHeader>
-      <CardTitle>学習進捗</CardTitle>
+      <CardTitle>学習カレンダー</CardTitle>
       <CardDescription>過去3ヶ月間の学習時間</CardDescription>
     </CardHeader>
     <CardContent className="pt-6 overflow-x-auto">
