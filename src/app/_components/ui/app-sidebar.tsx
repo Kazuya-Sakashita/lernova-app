@@ -4,6 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "@utils/session";
 import { useLogout } from "@hooks/useLogout";
+import { Button } from "./button";
+import { Badge } from "@ui/badge"; // バッジ
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarSeparator,
+} from "@ui/sidebar";
+
 import {
   Home,
   BookOpen,
@@ -21,38 +36,45 @@ import {
   PieChart,
   HelpCircle,
   Bookmark,
-} from "lucide-react"; // 必要なアイコンをインポート
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-  SidebarSeparator,
-} from "@ui/sidebar";
-import { Button } from "./button";
+} from "lucide-react";
 
-// メニューアイテムを共通化したコンポーネント
+// ✅ メニューアイテムの型定義
+type MenuItemType = {
+  href: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  label: string;
+  isUnderDevelopment?: boolean;
+};
+
+// ✅ メニューアイテム共通コンポーネント
 const MenuItem = ({
   href,
   icon: Icon,
   label,
   isActive,
+  isUnderDevelopment,
 }: {
   href: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   isActive: boolean;
+  isUnderDevelopment?: boolean;
 }) => (
   <SidebarMenuItem>
     <SidebarMenuButton asChild isActive={isActive}>
       <Link href={href}>
         <Icon className="h-4 w-4" />
-        <span>{label}</span>
+        <span className="flex items-center gap-2">
+          {label}
+          {isUnderDevelopment && (
+            <Badge
+              variant="outline"
+              className="text-yellow-600 border-yellow-400 bg-yellow-100 text-xs"
+            >
+              開発中
+            </Badge>
+          )}
+        </span>
       </Link>
     </SidebarMenuButton>
   </SidebarMenuItem>
@@ -60,19 +82,16 @@ const MenuItem = ({
 
 export function AppSidebar() {
   const { user, isLoading, isError } = useSession();
-  const pathname = usePathname();
   const { handleLogout } = useLogout();
+  const pathname = usePathname();
 
-  // アクティブなリンクの判定
-  const isActive = (path: string) =>
-    pathname === path || pathname.startsWith(path);
-
-  // ログイン状態を判定
-  const isLoggedIn = user?.email ? true : false;
+  const isLoggedIn = !!user?.email;
   const userId = user?.id ?? null;
   const isAdmin = user?.isAdmin ?? false;
 
-  // ローディング中またはエラー時の表示
+  const isActive = (path: string) =>
+    pathname === path || pathname.startsWith(path);
+
   if (
     isLoading &&
     pathname !== "/login" &&
@@ -86,34 +105,42 @@ export function AppSidebar() {
     return <div>ユーザー情報の取得に失敗しました。</div>;
   }
 
-  // メニューアイテムの共通定義
-  const menuItems = {
+  // ✅ メニュー一覧
+  const menuItems: {
+    loggedIn: MenuItemType[];
+    learningManagement: MenuItemType[];
+    community: MenuItemType[];
+    admin: MenuItemType[];
+    loggedOut: MenuItemType[];
+  } = {
     loggedIn: [
       { href: "/", icon: Home, label: "ホーム" },
       { href: "/learning-support", icon: BookOpen, label: "学習サポート概要" },
-      {
-        href: `/user/learning-record`,
-        icon: PlusCircle,
-        label: "学習を記録",
-      },
+      { href: `/user/learning-record`, icon: PlusCircle, label: "学習を記録" },
     ],
     learningManagement: [
       { href: "/user/dashboard", icon: BarChart2, label: "ダッシュボード" },
-
       { href: `/user/learning-record`, icon: Clock, label: "学習記録" },
+      { href: `/user/learning-history`, icon: History, label: "学習履歴" },
       {
-        href: `/user/learning-history`,
-        icon: History,
-        label: "学習履歴",
+        href: `/user/${userId}/progress`,
+        icon: BarChart2,
+        label: "進捗管理",
+        isUnderDevelopment: true,
       },
-      { href: `/user/${userId}/progress`, icon: BarChart2, label: "進捗管理" },
     ],
     community: [
-      { href: "/blog/success-stories", icon: Award, label: "成功事例" },
+      {
+        href: "/blog/success-stories",
+        icon: Award,
+        label: "成功事例",
+        isUnderDevelopment: true,
+      },
       {
         href: `/user/follow/share-record`,
         icon: Heart,
         label: "学習記録共有",
+        isUnderDevelopment: true,
       },
     ],
     admin: [
@@ -129,14 +156,18 @@ export function AppSidebar() {
     loggedOut: [
       { href: "/", icon: Home, label: "ホーム" },
       { href: "/learning-support", icon: BookOpen, label: "学習サポート概要" },
-      { href: "/blog/success-stories", icon: Award, label: "成功事例" },
+      {
+        href: "/blog/success-stories",
+        icon: Award,
+        label: "成功事例",
+        isUnderDevelopment: true,
+      },
       { href: "/login", icon: LogOut, label: "ログイン" },
       { href: "/signup", icon: User, label: "アカウント作成" },
     ],
   };
 
-  // メニューアイテムを動的にレンダリング
-  const renderMenuItems = (items: typeof menuItems.loggedIn) =>
+  const renderMenuItems = (items: MenuItemType[]) =>
     items.map((item, index) => (
       <MenuItem
         key={index}
@@ -144,13 +175,13 @@ export function AppSidebar() {
         icon={item.icon}
         label={item.label}
         isActive={isActive(item.href)}
+        isUnderDevelopment={item.isUnderDevelopment}
       />
     ));
 
   return (
     <Sidebar className="w-16 md:w-64 fixed h-[calc(100vh-4rem)] top-16 z-40">
       <SidebarContent>
-        {/* ログイン時のメニュー */}
         {isLoggedIn ? (
           <>
             <SidebarGroup>
@@ -178,7 +209,6 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {/* 管理者メニュー */}
             {isAdmin && (
               <>
                 <SidebarSeparator />
@@ -201,7 +231,6 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* サポートメニュー */}
         <SidebarGroup>
           <SidebarGroupLabel>サポート</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -211,6 +240,7 @@ export function AppSidebar() {
                 icon={HelpCircle}
                 label="サポート"
                 isActive={isActive("/support")}
+                isUnderDevelopment={true}
               />
               <MenuItem
                 href="/privacy-policy"

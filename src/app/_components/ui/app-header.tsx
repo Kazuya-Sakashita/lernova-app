@@ -2,25 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useSession } from "@utils/session";
+import { useLogout } from "@hooks/useLogout";
 import { Button } from "@ui/button";
+import { Badge } from "@ui/badge"; // ✅ バッジ追加
 import * as Avatar from "@radix-ui/react-avatar";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Menu, LogOut, User, Settings } from "lucide-react";
 import { Dialog, DialogTrigger, DialogContent } from "@radix-ui/react-dialog";
+import { Menu, LogOut, User, Settings } from "lucide-react";
 import { AppSidebar } from "./app-sidebar";
-import { useLogout } from "@hooks/useLogout";
-import { useSession } from "@utils/session";
-import { usePathname } from "next/navigation";
 import AppLogoLink from "../AppLogoLink";
 
 export function AppHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, isError, isLoading } = useSession(); // SWRでセッション情報を取得
+  const { user, isError, isLoading } = useSession();
   const { handleLogout } = useLogout();
+  const pathname = usePathname();
 
-  const pathname = usePathname(); // usePathname フックを使って pathname を取得
-
-  // ログイン状態を確認している間、サインアップやログイン画面以外で表示しない
   if (
     isLoading &&
     pathname !== "/login" &&
@@ -34,7 +33,7 @@ export function AppHeader() {
     return <div>ユーザー情報の取得に失敗しました。</div>;
   }
 
-  const isLoggedIn = user?.email ? true : false;
+  const isLoggedIn = !!user?.email;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -52,15 +51,13 @@ export function AppHeader() {
             </DialogContent>
           </Dialog>
 
-          <div className="ml-">
-            <AppLogoLink
-              href="/"
-              logoText="Lernova"
-              iconColor="text-pink-500"
-              textColor="text-black"
-              textSize="text-xl"
-            />
-          </div>
+          <AppLogoLink
+            href="/"
+            logoText="Lernova"
+            iconColor="text-pink-500"
+            textColor="text-black"
+            textSize="text-xl"
+          />
         </div>
 
         <nav className="hidden md:flex items-center gap-6">
@@ -70,17 +67,33 @@ export function AppHeader() {
           >
             ホーム
           </Link>
+
+          {/* ✅ 学習サポート（開発中バッジ） */}
           <Link
             href="/learning-support"
-            className="text-sm font-medium transition-colors hover:text-primary"
+            className="flex items-center gap-1 text-sm font-medium transition-colors hover:text-primary"
           >
             学習サポート
+            <Badge
+              variant="outline"
+              className="text-yellow-600 border-yellow-400 bg-yellow-100 text-xs"
+            >
+              開発中
+            </Badge>
           </Link>
+
+          {/* ✅ 成功事例（開発中バッジ） */}
           <Link
             href="/blog/success-stories"
-            className="text-sm font-medium transition-colors hover:text-primary"
+            className="flex items-center gap-1 text-sm font-medium transition-colors hover:text-primary"
           >
             成功事例
+            <Badge
+              variant="outline"
+              className="text-yellow-600 border-yellow-400 bg-yellow-100 text-xs"
+            >
+              開発中
+            </Badge>
           </Link>
         </nav>
 
@@ -97,18 +110,18 @@ export function AppHeader() {
                     <Avatar.Fallback
                       style={{
                         background:
-                          "linear-gradient(135deg, #FF66B2, #D9006E, #FF3385)", // ピンクの濃淡を加えたグラデーション
+                          "linear-gradient(135deg, #FF66B2, #D9006E, #FF3385)",
                         color: "white",
-                        fontSize: "14px", // フォントサイズ調整
-                        borderRadius: "50%", // サークルにするためにborder-radiusを50%に設定
+                        fontSize: "14px",
+                        borderRadius: "50%",
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
-                        height: "2.5rem", // サイズ調整（高さ）
-                        width: "2.5rem", // サイズ調整（幅）
-                        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)", // モダンな影の効果を追加
-                        fontWeight: "bold", // フォントの太さを調整
-                        textTransform: "uppercase", // 文字を大文字にしてスタイリッシュに
+                        height: "2.5rem",
+                        width: "2.5rem",
+                        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                        fontWeight: "bold",
+                        textTransform: "uppercase",
                       }}
                     >
                       {user?.nickname || "ユーザー"}
@@ -118,7 +131,7 @@ export function AppHeader() {
               </DropdownMenu.Trigger>
               <DropdownMenu.Content
                 align="end"
-                className="bg-white shadow-lg rounded-lg p-2 w-48 mt-2" // スタイル調整
+                className="bg-white shadow-lg rounded-lg p-2 w-48 mt-2"
               >
                 <DropdownMenu.Label className="text-sm font-medium text-gray-700">
                   マイアカウント

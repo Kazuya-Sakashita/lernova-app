@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@ui/card";
+import { Badge } from "@ui/badge"; // ✅ バッジをインポート
 
 const goals = [
   { title: "週30時間の学習", percent: 70 },
@@ -17,7 +18,16 @@ const goals = [
 const MonthlyGoals = () => (
   <Card>
     <CardHeader>
-      <CardTitle>今月の目標</CardTitle>
+      <div className="flex items-center gap-2">
+        <CardTitle>今月の目標</CardTitle>
+        <Badge
+          variant="outline"
+          className="text-yellow-600 border-yellow-400 bg-yellow-100"
+        >
+          開発中
+        </Badge>{" "}
+        {/* ✅ 開発中バッジ追加 */}
+      </div>
       <CardDescription>達成状況</CardDescription>
     </CardHeader>
     <CardContent>
