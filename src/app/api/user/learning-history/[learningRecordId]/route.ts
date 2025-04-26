@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@utils/prisma"; // Prismaクライアントをインポート
 import { supabase } from "@utils/supabase"; // Supabaseクライアントをインポート
+import {
+  recalculateStreakAfterLearningChange,
+  recalculateBestStreak,
+} from "@/app/_utils/learningStreak"; // 継続日数再計算の共通関数をインポート
 
 // PUT リクエスト: 学習記録の更新
 export const PUT = async (
   request: NextRequest,
   { params }: { params: { learningRecordId: string } }
 ) => {
-  const { learningRecordId } = params; // 動的ルートパラメータlearningRecordIdをparamsから取得
+  const { learningRecordId } = params;
 
-  // デバッグ用ログ
-  console.log("Learning Record ID:", learningRecordId);
-
-  // learningRecordIdが存在しない場合はエラーを返す
   if (!learningRecordId) {
     return NextResponse.json(
       { message: "学習記録IDが不足しています" },
@@ -21,14 +21,20 @@ export const PUT = async (
   }
 
   try {
-    // PUTリクエストのボディをJSONとして取得
     const body = await request.json();
-    console.log("Request Body:", body); // ボディ内容をデバッグ用に表示
+    console.log("Request Body:", body);
 
-    const { title, date, startTime, endTime, content, categoryId, duration } =
-      body;
+    const {
+      title,
+      date,
+      startTime,
+      endTime,
+      content,
+      categoryId,
+      duration,
+      supabaseUserId,
+    } = body;
 
-    // ボディのデータが不足していないかチェック
     if (
       !title ||
       !date ||
@@ -36,7 +42,8 @@ export const PUT = async (
       !endTime ||
       !content ||
       !categoryId ||
-      !duration
+      !duration ||
+      !supabaseUserId
     ) {
       return NextResponse.json(
         { message: "リクエストボディのデータが不足しています" },
@@ -44,7 +51,6 @@ export const PUT = async (
       );
     }
 
-    // トークンをヘッダーから取得
     const token = request.headers.get("authorization")?.split(" ")[1];
     if (!token) {
       return NextResponse.json(
@@ -53,7 +59,6 @@ export const PUT = async (
       );
     }
 
-    // トークンを検証 (supabase.auth.getUser()を使用)
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data) {
       return NextResponse.json(
@@ -62,7 +67,6 @@ export const PUT = async (
       );
     }
 
-    // learningRecordIdをnumber型に変換
     const recordId = Number(learningRecordId);
     if (isNaN(recordId)) {
       return NextResponse.json(
@@ -71,22 +75,32 @@ export const PUT = async (
       );
     }
 
-    // Prismaで学習記録を更新
     const updatedRecord = await prisma.learningRecord.update({
-      where: { id: recordId }, // PrismaではIDを数値で指定
+      where: { id: recordId },
       data: {
         title,
         learning_date: date,
         start_time: startTime,
         end_time: endTime,
         content,
-        categoryId: Number(categoryId), // categoryIdを明示的に数値型に変換
+        categoryId: Number(categoryId),
         duration,
       },
     });
 
-    // 更新成功時のレスポンス
-    return NextResponse.json(updatedRecord, { status: 200 });
+    // 📌 共通関数で継続日数を再計算
+    const { currentStreak, bestStreak } =
+      await recalculateStreakAfterLearningChange(supabaseUserId);
+
+    console.log("✅ 学習記録を更新し、継続日数を再計算しました:", {
+      currentStreak,
+      bestStreak,
+    });
+
+    return NextResponse.json(
+      { updatedRecord, currentStreak, bestStreak },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("更新処理エラー:", error);
     return NextResponse.json(
@@ -101,12 +115,8 @@ export const DELETE = async (
   request: NextRequest,
   { params }: { params: { learningRecordId: string } }
 ) => {
-  const { learningRecordId } = params; // 動的ルートパラメータlearningRecordIdをparamsから取得
+  const { learningRecordId } = params;
 
-  // デバッグ用ログ
-  console.log("Learning Record ID:", learningRecordId);
-
-  // learningRecordIdが存在しない場合はエラーを返す
   if (!learningRecordId) {
     return NextResponse.json(
       { message: "学習記録IDが不足しています" },
@@ -115,7 +125,6 @@ export const DELETE = async (
   }
 
   try {
-    // トークンをヘッダーから取得
     const token = request.headers.get("authorization")?.split(" ")[1];
     if (!token) {
       return NextResponse.json(
@@ -124,7 +133,6 @@ export const DELETE = async (
       );
     }
 
-    // トークンを検証 (supabase.auth.getUser()を使用)
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data) {
       return NextResponse.json(
@@ -133,7 +141,14 @@ export const DELETE = async (
       );
     }
 
-    // learningRecordIdをnumber型に変換
+    const supabaseUserId = data.user?.id;
+    if (!supabaseUserId) {
+      return NextResponse.json(
+        { message: "認証エラー: supabaseUserIdが取得できません" },
+        { status: 401 }
+      );
+    }
+
     const recordId = Number(learningRecordId);
     if (isNaN(recordId)) {
       return NextResponse.json(
@@ -142,75 +157,24 @@ export const DELETE = async (
       );
     }
 
-    // Prismaで学習記録を削除
     const deletedRecord = await prisma.learningRecord.delete({
-      where: { id: recordId }, // PrismaではIDを数値で指定
+      where: { id: recordId },
     });
 
-    // 削除成功時のレスポンス
-    return NextResponse.json(deletedRecord, { status: 200 });
+    console.log("🗑️ 学習記録を削除しました");
+
+    // 📌 削除後は本当のベスト連続記録を再計算する
+    const bestStreak = await recalculateBestStreak(supabaseUserId);
+
+    console.log("✅ 削除後に本当のベスト連続日数を再計算しました:", {
+      bestStreak,
+    });
+
+    return NextResponse.json({ deletedRecord, bestStreak }, { status: 200 });
   } catch (error) {
     console.error("削除処理エラー:", error);
     return NextResponse.json(
       { message: "学習記録の削除に失敗しました" },
-      { status: 500 }
-    );
-  }
-};
-
-// 学習記録を新規作成するエンドポイント（POST）
-export const POST = async (req: NextRequest) => {
-  try {
-    const record = await req.json(); // リクエストボディをJSONとして取得
-    console.log("Received record:", record); // デバッグ用ログ
-
-    // 必要なデータが揃っているか確認
-    const {
-      title,
-      date,
-      startTime,
-      endTime,
-      content,
-      categoryId,
-      duration,
-      supabaseUserId,
-    } = record;
-
-    if (
-      !title ||
-      !date ||
-      !startTime ||
-      !endTime ||
-      !content ||
-      !categoryId ||
-      !duration ||
-      !supabaseUserId
-    ) {
-      return NextResponse.json(
-        { message: "必要なデータが不足しています" },
-        { status: 400 }
-      );
-    }
-
-    // Prismaで新しいレコードを保存
-    const newRecord = await prisma.learningRecord.create({
-      data: {
-        supabaseUserId,
-        categoryId,
-        title,
-        learning_date: new Date(date), // dateをDate型に変換
-        start_time: new Date(`2000-01-01T${startTime}:00`), // startTimeをDate型に変換
-        end_time: new Date(`2000-01-01T${endTime}:00`), // endTimeをDate型に変換
-        content,
-        duration,
-      },
-    });
-
-    return NextResponse.json({ status: "success", newRecord }, { status: 201 });
-  } catch (error) {
-    console.error("保存処理エラー:", error);
-    return NextResponse.json(
-      { message: "学習記録の保存に失敗しました" },
       { status: 500 }
     );
   }
