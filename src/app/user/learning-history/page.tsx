@@ -4,14 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import useSWR from "swr";
 import LearningRecordDialog from "./_components/LearningRecordDialog";
 import LearningRecordTable from "./_components/LearningRecordTable";
-import HeatmapSection from "@/app/user/dashboard/_components/HeatmapSection"; // ✅ 追加
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/app/_components/ui/card";
+import HeatmapSection from "@/app/user/dashboard/_components/HeatmapSection";
 import { LearningRecord, RawRecord } from "@/app/_types/formTypes";
 import { useSession } from "@utils/session";
 import { fetcher } from "@utils/fetcher";
