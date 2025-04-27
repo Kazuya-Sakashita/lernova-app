@@ -44,17 +44,19 @@ export async function GET(req: NextRequest) {
   });
 
   // 学習記録を整形
-  const formatted: RecentLearningRecord[] = records.map((record) => ({
-    id: record.id,
-    title: record.title,
-    content: record.content,
-    duration: record.duration,
-    learning_date: record.learning_date,
-    daysAgo: formatDistanceToNow(record.learning_date, {
-      addSuffix: true, // 例: "3日前"
-      locale: ja,
-    }),
-  }));
+  const formatted: RecentLearningRecord[] = records.map(
+    (record): RecentLearningRecord => ({
+      id: record.id,
+      title: record.title,
+      content: record.content,
+      duration: record.duration,
+      learning_date: record.learning_date,
+      daysAgo: formatDistanceToNow(record.learning_date, {
+        addSuffix: true, // 例: "3日前"
+        locale: ja,
+      }),
+    })
+  );
 
   // 整形したデータを JSON として返す
   return NextResponse.json(formatted);
