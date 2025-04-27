@@ -47,11 +47,11 @@ export async function GET(req: NextRequest) {
 
   // 合計時間を計算
   const weeklyDuration = thisWeekRecords.reduce(
-    (sum, r) => sum + r.duration,
+    (sum: number, r) => sum + r.duration,
     0
   );
   const lastWeekDuration = lastWeekRecords.reduce(
-    (sum, r) => sum + r.duration,
+    (sum: number, r) => sum + r.duration,
     0
   );
 
