@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 
   // 各レコードの日付をキーとして学習時間を集計
   records.forEach((record) => {
-    const dateStr = format(record.learning_date, "yyyy-MM-dd");
+    const dateStr = format(new Date(record.learning_date), "yyyy-MM-dd"); // Date型として処理
     totals[dateStr] = (totals[dateStr] ?? 0) + record.duration;
   });
 
