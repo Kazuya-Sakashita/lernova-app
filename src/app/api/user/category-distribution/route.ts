@@ -3,6 +3,13 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+type GroupedRecord = {
+  categoryId: number;
+  _sum: {
+    duration: number | null;
+  };
+};
+
 export async function GET(req: NextRequest) {
   const supabaseUserId = req.nextUrl.searchParams.get("supabaseUserId");
 
@@ -23,7 +30,7 @@ export async function GET(req: NextRequest) {
   const labels: string[] = [];
   const data: number[] = [];
 
-  records.forEach((record) => {
+  records.forEach((record: GroupedRecord) => {
     const category = categories.find((c) => c.id === record.categoryId);
     if (category) {
       labels.push(category.category_name);
