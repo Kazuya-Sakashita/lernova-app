@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient, Category } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -34,9 +34,8 @@ export async function GET(req: NextRequest) {
 
   // 集計結果に基づいてカテゴリ名と学習時間を格納
   records.forEach((record: GroupedRecord) => {
-    const category = categories.find(
-      (c: Category) => c.id === record.categoryId // Category型を明示的に指定
-    );
+    // Category型の使用を削除
+    const category = categories.find((c) => c.id === record.categoryId);
     if (category) {
       labels.push(category.category_name);
       data.push(record._sum.duration ?? 0); // durationがnullの場合は0を代入
