@@ -16,6 +16,14 @@ type RecentLearningRecord = {
   daysAgo: string; // 何日前かの表示
 };
 
+type RecordFromPrisma = {
+  id: number;
+  title: string;
+  content: string;
+  duration: number;
+  learning_date: Date;
+};
+
 export async function GET(req: NextRequest) {
   // クエリパラメータから supabaseUserId を取得
   const supabaseUserId = req.nextUrl.searchParams.get("supabaseUserId");
@@ -44,17 +52,19 @@ export async function GET(req: NextRequest) {
   });
 
   // 学習記録を整形（型キャストを追加）
-  const formatted: RecentLearningRecord[] = records.map((record) => ({
-    id: record.id as number, // 型キャスト
-    title: record.title,
-    content: record.content,
-    duration: record.duration,
-    learning_date: record.learning_date as Date, // 型キャスト
-    daysAgo: formatDistanceToNow(record.learning_date, {
-      addSuffix: true, // 例: "3日前"
-      locale: ja,
-    }),
-  }));
+  const formatted: RecentLearningRecord[] = records.map(
+    (record: RecordFromPrisma) => ({
+      id: record.id as number, // 型キャスト
+      title: record.title,
+      content: record.content,
+      duration: record.duration,
+      learning_date: record.learning_date as Date, // 型キャスト
+      daysAgo: formatDistanceToNow(record.learning_date, {
+        addSuffix: true, // 例: "3日前"
+        locale: ja,
+      }),
+    })
+  );
 
   // 整形したデータを JSON として返す
   return NextResponse.json(formatted);
