@@ -75,7 +75,9 @@ export async function getLearningDates(
     select: { learning_date: true },
   });
 
-  return new Set(records.map((r) => formatDate(r.learning_date)));
+  return new Set(
+    records.map((r: { learning_date: Date }) => formatDate(r.learning_date))
+  );
 }
 
 /**
@@ -90,7 +92,9 @@ export async function getAllLearningDates(
     orderBy: { learning_date: "desc" },
   });
 
-  return new Set(records.map((r) => formatDate(r.learning_date)));
+  return new Set(
+    records.map((r: { learning_date: Date }) => formatDate(r.learning_date))
+  );
 }
 
 /**

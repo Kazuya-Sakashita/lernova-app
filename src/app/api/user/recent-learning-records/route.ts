@@ -6,18 +6,32 @@ import { ja } from "date-fns/locale";
 // Prisma クライアントのインスタンスを作成
 const prisma = new PrismaClient();
 
-// GET リクエストの処理
+// このファイル専用の学習記録型を定義
+type RecentLearningRecord = {
+  id: number; // 学習記録のID
+  title: string; // 学習記録のタイトル
+  content: string; // 学習内容
+  duration: number; // 学習時間
+  learning_date: Date; // 学習日
+  daysAgo: string; // 何日前かの表示
+};
+
+type RecordFromPrisma = {
+  id: number;
+  title: string;
+  content: string;
+  duration: number;
+  learning_date: Date;
+};
+
 export async function GET(req: NextRequest) {
   // クエリパラメータから supabaseUserId を取得
   const supabaseUserId = req.nextUrl.searchParams.get("supabaseUserId");
 
   // supabaseUserId が指定されていない場合はエラーレスポンスを返す
   if (!supabaseUserId) {
-    console.log("❌ supabaseUserId が提供されていません");
     return NextResponse.json({ error: "No user ID provided" }, { status: 400 });
   }
-
-  console.log("✅ supabaseUserId:", supabaseUserId);
 
   // 該当ユーザーの学習記録を取得（最新順に最大7件）
   const records = await prisma.learningRecord.findMany({
@@ -37,20 +51,20 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  console.log("📚 取得された学習記録:", records);
-
-  // クライアント用に日数やフォーマットを整形
-  const formatted = records.map((record) => ({
-    title: record.title,
-    content: record.content,
-    duration: record.duration,
-    daysAgo: formatDistanceToNow(record.learning_date, {
-      addSuffix: true, // 「～前」の形式で表示（例: "3日前"）
-      locale: ja,
-    }),
-  }));
-
-  console.log("🪄 フォーマット後:", formatted);
+  // 学習記録を整形（型キャストを追加）
+  const formatted: RecentLearningRecord[] = records.map(
+    (record: RecordFromPrisma) => ({
+      id: record.id as number, // 型キャスト
+      title: record.title,
+      content: record.content,
+      duration: record.duration,
+      learning_date: record.learning_date as Date, // 型キャスト
+      daysAgo: formatDistanceToNow(record.learning_date, {
+        addSuffix: true, // 例: "3日前"
+        locale: ja,
+      }),
+    })
+  );
 
   // 整形したデータを JSON として返す
   return NextResponse.json(formatted);

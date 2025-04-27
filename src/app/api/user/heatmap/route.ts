@@ -4,6 +4,15 @@ import { format, subDays } from "date-fns";
 
 const prisma = new PrismaClient();
 
+// GroupedRecord型を定義（categoryIdとdurationの合計を持つ）
+type GroupedRecord = {
+  categoryId: number;
+  _sum: {
+    duration: number | null;
+  };
+  learning_date: Date; // learning_date を追加
+};
+
 export async function GET(req: NextRequest) {
   // クエリパラメータから supabaseUserId を取得
   const supabaseUserId = req.nextUrl.searchParams.get("supabaseUserId");
@@ -17,8 +26,9 @@ export async function GET(req: NextRequest) {
   const today = new Date();
   const startDate = subDays(today, 89); // 90日前（今日含む）
 
-  // 指定されたユーザーの過去90日間の学習記録を取得
-  const records = await prisma.learningRecord.findMany({
+  // 指定されたユーザーの過去90日間の学習記録を集計（groupByを使用）
+  const records = await prisma.learningRecord.groupBy({
+    by: ["categoryId", "learning_date"],
     where: {
       supabaseUserId,
       learning_date: {
@@ -26,9 +36,8 @@ export async function GET(req: NextRequest) {
         lte: today, // 今日まで
       },
     },
-    select: {
-      learning_date: true, // 学習日
-      duration: true, // 学習時間
+    _sum: {
+      duration: true, // durationを合計
     },
   });
 
@@ -36,9 +45,12 @@ export async function GET(req: NextRequest) {
   const totals: Record<string, number> = {};
 
   // 各レコードの日付をキーとして学習時間を集計
-  records.forEach((record) => {
+  records.forEach((record: GroupedRecord) => {
+    // 学習日付を文字列にフォーマット
     const dateStr = format(record.learning_date, "yyyy-MM-dd");
-    totals[dateStr] = (totals[dateStr] ?? 0) + record.duration;
+
+    // 既に学習時間が存在すればその値を追加、なければ新たにセット
+    totals[dateStr] = (totals[dateStr] ?? 0) + (record._sum.duration ?? 0);
   });
 
   // 90日分すべての日付を走査し、学習時間を埋める（なければ0）
