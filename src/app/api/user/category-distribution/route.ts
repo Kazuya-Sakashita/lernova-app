@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Category } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -31,12 +31,13 @@ export async function GET(req: NextRequest) {
   const data: number[] = [];
 
   records.forEach((record: GroupedRecord) => {
-    const category = categories.find((c) => c.id === record.categoryId);
+    const category = categories.find(
+      (c: Category) => c.id === record.categoryId
+    );
     if (category) {
       labels.push(category.category_name);
       data.push(record._sum.duration ?? 0);
     }
   });
-
   return NextResponse.json({ labels, data });
 }
