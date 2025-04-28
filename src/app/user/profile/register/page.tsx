@@ -36,6 +36,7 @@ import { Separator } from "@ui/separator";
 import { Textarea } from "@ui/textarea";
 import { useSession } from "@/app/_utils/session"; // SWRからセッション情報を取得
 import useUserProfile from "@/app/user/profile/_hooks/useUserProfile"; // useUserProfile フックをインポート
+import { useRouter } from "next/navigation";
 
 // フォームのバリデーションスキーマ
 const formSchema = z.object({
@@ -81,6 +82,7 @@ export default function ProfileForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useSession();
   const { profileData, isLoading } = useUserProfile(); // useUserProfile フックを使用
+  const router = useRouter();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema), // Zodを使ってバリデーション
@@ -425,7 +427,12 @@ export default function ProfileForm() {
             />
 
             <CardFooter className="px-0 flex justify-between">
-              <Button variant="outline" type="button" className="text-pink-600">
+              <Button
+                variant="outline"
+                type="button"
+                className="text-pink-600"
+                onClick={() => router.push("/user/dashboard")}
+              >
                 キャンセル
               </Button>
               <Button
