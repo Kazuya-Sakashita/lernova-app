@@ -25,8 +25,8 @@ export const convertToJST = (utcDate: string): string => {
 
 // 日本時間から時間部分 (HH:mm) を抽出する関数
 export const extractTime = (utcDate: string): string => {
-  console.log("extractTime関数が呼び出されました"); // デバッグ用
-  console.log("utcDate:", utcDate); // デバッグ用
+  // console.log("extractTime関数が呼び出されました"); // デバッグ用
+  // console.log("utcDate:", utcDate); // デバッグ用
   const zonedTime = convertToJSTDate(utcDate); // UTCを日本時間に変換
   return format(zonedTime, "HH:mm"); // 時間部分のみ取得
 };

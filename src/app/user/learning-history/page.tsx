@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import useSWR from "swr";
+import { mutate } from "swr";
 import LearningRecordDialog from "./_components/LearningRecordDialog";
 import LearningRecordTable from "./_components/LearningRecordTable";
 import HeatmapSection from "@/app/user/dashboard/_components/HeatmapSection";
@@ -20,6 +21,14 @@ const LearningHistory = () => {
     userId ? `/api/user/heatmap?supabaseUserId=${userId}` : null,
     fetcher
   );
+
+  // ヒートマップ更新関数を作成
+  const refreshHeatmap = () => {
+    if (user?.supabaseUserId) {
+      console.log("ヒートマップのデータを更新");
+      mutate(`/api/user/heatmap?supabaseUserId=${user.supabaseUserId}`);
+    }
+  };
 
   // 学習記録を変換する関数
   const transformRecord = (rawRecord: RawRecord): LearningRecord => ({
@@ -72,6 +81,7 @@ const LearningHistory = () => {
       if (!response.ok) throw new Error("学習記録の保存に失敗しました");
 
       await fetchLearningRecords();
+      refreshHeatmap();
     } catch (error) {
       console.error(error);
       alert("学習記録の保存に失敗しました");
@@ -94,6 +104,7 @@ const LearningHistory = () => {
       if (!response.ok) throw new Error("学習記録の削除に失敗しました");
 
       setRecords(records.filter((record) => record.id !== id));
+      refreshHeatmap();
     } catch (error) {
       console.error(error);
       alert("削除に失敗しました");
@@ -127,6 +138,7 @@ const LearningHistory = () => {
         )
       );
       setRecordToEdit(null);
+      refreshHeatmap();
     } catch (error) {
       console.error(error);
       alert("学習記録の保存に失敗しました");
