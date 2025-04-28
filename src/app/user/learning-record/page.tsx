@@ -1,4 +1,3 @@
-// src/app/user/learning-record/page.tsx
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -18,15 +17,23 @@ export default function TimeInputPage() {
   const router = useRouter();
   const { user } = useSession();
 
+  // 入力状態
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [newCategory, setNewCategory] = useState("");
   const [content, setContent] = useState("");
+
+  // タイマー状態
   const [isLearning, setIsLearning] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
+
+  // 最新学習記録
   const [recentLearning, setRecentLearning] = useState<LearningRecord[]>([]);
 
-  // サーバーから最新5件を取得
+  // 保存中かどうか（ストップ連打防止）
+  const [isSaving, setIsSaving] = useState(false);
+
+  // APIレスポンスをフロントエンド用データに変換
   const transformRecord = (raw: RawRecord): LearningRecord => ({
     id: raw.id,
     title: raw.title,
@@ -39,6 +46,7 @@ export default function TimeInputPage() {
     duration: raw.duration,
   });
 
+  // 最新学習記録を取得
   const fetchLearningRecords = useCallback(async () => {
     if (!user?.id) return;
     try {
@@ -79,17 +87,21 @@ export default function TimeInputPage() {
 
   // タイマー停止＋サーバー保存
   const handleStop = useCallback(async () => {
+    if (isSaving) return; // 保存中は二重送信防止
+    setIsSaving(true);
+
     const st = localStorage.getItem("learning_start_time");
-    if (!st)
-      return toast({ title: "開始時間がありません", variant: "destructive" });
+    if (!st) {
+      toast({ title: "開始時間がありません", variant: "destructive" });
+      setIsSaving(false);
+      return;
+    }
 
     const start = new Date(st);
     const end = new Date();
-
-    // ミリ秒の差分を時間（h）に変換
     const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
 
-    // 日付と時刻を JST→UTC に変換
+    // 日付と時刻をUTCに変換
     const localDate = format(start, "yyyy-MM-dd");
     const localStartTime = format(start, "HH:mm");
     const localEndTime = format(end, "HH:mm");
@@ -101,10 +113,10 @@ export default function TimeInputPage() {
       categoryId:
         category === "その他" ? Number(newCategory) : Number(category),
       content,
-      date: utcStart, // 学習日
-      startTime: utcStart, // 開始
-      endTime: utcEnd, // 終了
-      duration: durationHours, // Float (時間単位)
+      date: utcStart,
+      startTime: utcStart,
+      endTime: utcEnd,
+      duration: durationHours,
       supabaseUserId: user?.id,
     };
 
@@ -141,6 +153,8 @@ export default function TimeInputPage() {
         description: "学習記録の保存に失敗しました",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false); // 保存処理が完了したら解除
     }
   }, [
     title,
@@ -150,9 +164,10 @@ export default function TimeInputPage() {
     user?.id,
     user?.token,
     fetchLearningRecords,
+    isSaving,
   ]);
 
-  // リセット
+  // 入力リセット
   const handleReset = useCallback(() => {
     setIsLearning(false);
     setStartTime(null);
@@ -163,7 +178,7 @@ export default function TimeInputPage() {
     toast({ title: "リセットしました" });
   }, []);
 
-  // 全件画面へ
+  // 学習履歴ページへ遷移
   const onViewAll = useCallback(() => {
     router.push("/user/learning-history");
   }, [router]);
