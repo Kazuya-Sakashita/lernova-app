@@ -27,13 +27,61 @@ export default function TimeInputPage() {
   const [isLearning, setIsLearning] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
 
+  // 保存中かどうか
+  const [isSaving, setIsSaving] = useState(false);
+
   // 最新学習記録
   const [recentLearning, setRecentLearning] = useState<LearningRecord[]>([]);
 
-  // 保存中かどうか（ストップ連打防止）
-  const [isSaving, setIsSaving] = useState(false);
+  // ✅ タイマー実行中のナビゲーションガード（リロードや画面移動を防止）
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isLearning) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
 
-  // APIレスポンスをフロントエンド用データに変換
+    const handlePopState = (e: PopStateEvent) => {
+      if (
+        isLearning &&
+        !window.confirm(
+          "タイマーが実行中です。このまま移動するとタイマーが停止しますが、よろしいですか？"
+        )
+      ) {
+        e.preventDefault();
+        window.history.pushState(null, "", window.location.href); // 強制的に履歴を戻す
+      }
+    };
+
+    const handleLinkClick = (e: MouseEvent) => {
+      if (isLearning) {
+        const target = e.target as HTMLElement;
+        if (target.closest("a")) {
+          if (
+            !window.confirm(
+              "タイマーが実行中です。このまま移動するとタイマーが停止しますが、よろしいですか？"
+            )
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("popstate", handlePopState);
+    document.addEventListener("click", handleLinkClick);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("popstate", handlePopState);
+      document.removeEventListener("click", handleLinkClick);
+    };
+  }, [isLearning]);
+
+  // レスポンスデータをフロントエンド用に変換
   const transformRecord = (raw: RawRecord): LearningRecord => ({
     id: raw.id,
     title: raw.title,
@@ -46,7 +94,7 @@ export default function TimeInputPage() {
     duration: raw.duration,
   });
 
-  // 最新学習記録を取得
+  // ✅ 最新学習記録を取得
   const fetchLearningRecords = useCallback(async () => {
     if (!user?.id) return;
     try {
@@ -67,11 +115,12 @@ export default function TimeInputPage() {
     }
   }, [user?.id]);
 
+  // ✅ マウント時に学習記録を取得
   useEffect(() => {
     fetchLearningRecords();
   }, [fetchLearningRecords]);
 
-  // タイマー開始
+  // ✅ タイマー開始処理
   const handleStart = useCallback(() => {
     if (!title)
       return toast({ title: "タイトルが必要です", variant: "destructive" });
@@ -85,9 +134,9 @@ export default function TimeInputPage() {
     toast({ title: "タイマー開始", description: `${title} を記録中` });
   }, [title, category, newCategory]);
 
-  // タイマー停止＋サーバー保存
+  // ✅ タイマー停止＋学習記録保存処理
   const handleStop = useCallback(async () => {
-    if (isSaving) return; // 保存中は二重送信防止
+    if (isSaving) return;
     setIsSaving(true);
 
     const st = localStorage.getItem("learning_start_time");
@@ -101,7 +150,6 @@ export default function TimeInputPage() {
     const end = new Date();
     const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
 
-    // 日付と時刻をUTCに変換
     const localDate = format(start, "yyyy-MM-dd");
     const localStartTime = format(start, "HH:mm");
     const localEndTime = format(end, "HH:mm");
@@ -120,11 +168,6 @@ export default function TimeInputPage() {
       supabaseUserId: user?.id,
     };
 
-    console.log(
-      "📤 フォーム送信データ:",
-      JSON.stringify(recordToSave, null, 2)
-    );
-
     try {
       const res = await fetch("/api/user/learning-record", {
         method: "POST",
@@ -134,6 +177,7 @@ export default function TimeInputPage() {
         },
         body: JSON.stringify(recordToSave),
       });
+
       if (!res.ok) {
         const errText = await res.text();
         console.error("❌ 保存失敗:", res.status, errText);
@@ -154,7 +198,7 @@ export default function TimeInputPage() {
         variant: "destructive",
       });
     } finally {
-      setIsSaving(false); // 保存処理が完了したら解除
+      setIsSaving(false);
     }
   }, [
     title,
@@ -167,7 +211,7 @@ export default function TimeInputPage() {
     isSaving,
   ]);
 
-  // 入力リセット
+  // ✅ 入力リセット処理
   const handleReset = useCallback(() => {
     setIsLearning(false);
     setStartTime(null);
@@ -178,7 +222,7 @@ export default function TimeInputPage() {
     toast({ title: "リセットしました" });
   }, []);
 
-  // 学習履歴ページへ遷移
+  // ✅ 学習履歴ページへ遷移
   const onViewAll = useCallback(() => {
     router.push("/user/learning-history");
   }, [router]);
