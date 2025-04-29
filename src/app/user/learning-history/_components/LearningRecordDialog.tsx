@@ -25,6 +25,7 @@ interface LearningRecordDialogProps {
   recordToEdit: LearningRecord | null;
   isEditing: boolean;
   setRecordToEdit: (record: LearningRecord | null) => void; // 親からsetRecordToEditを受け取る
+  isSaving: boolean;
 }
 
 const LearningRecordDialog = ({
@@ -33,6 +34,7 @@ const LearningRecordDialog = ({
   recordToEdit,
   isEditing,
   setRecordToEdit, // setRecordToEditを受け取る
+  isSaving,
 }: LearningRecordDialogProps) => {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(""); // 開始日付
@@ -245,9 +247,17 @@ const LearningRecordDialog = ({
             type="button"
             onClick={handleSubmit}
             className="bg-pink-500 hover:bg-pink-600"
+            disabled={isSaving} // 保存中は押せないようにする
           >
-            {isEditing ? "保存" : "追加"}
+            {isSaving
+              ? isEditing
+                ? "更新中..."
+                : "保存中..." // 保存中の文言を切り替え
+              : isEditing
+              ? "更新"
+              : "追加"}{" "}
           </Button>
+
           <Button
             type="button"
             onClick={handleDialogClose} // ダイアログを閉じる
