@@ -13,6 +13,7 @@ import { fetcher } from "@utils/fetcher";
 const LearningHistory = () => {
   const [records, setRecords] = useState<LearningRecord[]>([]);
   const [recordToEdit, setRecordToEdit] = useState<LearningRecord | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const { user } = useSession();
   const userId = user?.supabaseUserId ?? "";
 
@@ -68,6 +69,8 @@ const LearningHistory = () => {
 
   // 学習記録追加
   const handleAddRecord = async (newRecord: LearningRecord) => {
+    setIsSaving(true);
+
     try {
       const response = await fetch(`/api/user/learning-history`, {
         method: "POST",
@@ -86,6 +89,7 @@ const LearningHistory = () => {
       console.error(error);
       alert("学習記録の保存に失敗しました");
     }
+    setIsSaving(false);
   };
 
   // 学習記録削除
@@ -117,6 +121,8 @@ const LearningHistory = () => {
   };
 
   const handleSaveRecord = async (updatedRecord: LearningRecord) => {
+    setIsSaving(true);
+
     try {
       const response = await fetch(
         `/api/user/learning-history/${updatedRecord.id}`,
@@ -143,6 +149,7 @@ const LearningHistory = () => {
       console.error(error);
       alert("学習記録の保存に失敗しました");
     }
+    setIsSaving(false);
   };
 
   return (
@@ -162,6 +169,7 @@ const LearningHistory = () => {
           recordToEdit={recordToEdit}
           isEditing={recordToEdit !== null}
           setRecordToEdit={setRecordToEdit}
+          isSaving={isSaving}
         />
       </div>
 

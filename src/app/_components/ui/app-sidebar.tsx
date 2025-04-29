@@ -122,12 +122,13 @@ export function AppSidebar() {
       { href: "/user/dashboard", icon: BarChart2, label: "ダッシュボード" },
       { href: `/user/learning-record`, icon: Clock, label: "学習記録" },
       { href: `/user/learning-history`, icon: History, label: "学習履歴" },
-      {
-        href: `/user/${userId}/progress`,
-        icon: BarChart2,
-        label: "進捗管理",
-        isUnderDevelopment: true,
-      },
+
+      // {
+      //   href: `/user/${userId}/progress`,
+      //   icon: BarChart2,
+      //   label: "進捗管理",
+      //   isUnderDevelopment: true,
+      // },
     ],
     community: [
       {
@@ -200,6 +201,7 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
 
+            {/*
             <SidebarGroup>
               <SidebarGroupLabel>コミュニティ</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -208,6 +210,7 @@ export function AppSidebar() {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            */}
 
             {isAdmin && (
               <>
@@ -231,6 +234,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
+        {/*
         <SidebarGroup>
           <SidebarGroupLabel>サポート</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -251,6 +255,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        */}
 
         {isLoggedIn && (
           <Button

@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useSession } from "@utils/session";
 import { useLogout } from "@hooks/useLogout";
 import { Button } from "@ui/button";
-import { Badge } from "@ui/badge"; // ✅ バッジ追加
 import * as Avatar from "@radix-ui/react-avatar";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Dialog, DialogTrigger, DialogContent } from "@radix-ui/react-dialog";
@@ -66,34 +65,6 @@ export function AppHeader() {
             className="text-sm font-medium transition-colors hover:text-primary"
           >
             ホーム
-          </Link>
-
-          {/* ✅ 学習サポート（開発中バッジ） */}
-          <Link
-            href="/learning-support"
-            className="flex items-center gap-1 text-sm font-medium transition-colors hover:text-primary"
-          >
-            学習サポート
-            <Badge
-              variant="outline"
-              className="text-yellow-600 border-yellow-400 bg-yellow-100 text-xs"
-            >
-              開発中
-            </Badge>
-          </Link>
-
-          {/* ✅ 成功事例（開発中バッジ） */}
-          <Link
-            href="/blog/success-stories"
-            className="flex items-center gap-1 text-sm font-medium transition-colors hover:text-primary"
-          >
-            成功事例
-            <Badge
-              variant="outline"
-              className="text-yellow-600 border-yellow-400 bg-yellow-100 text-xs"
-            >
-              開発中
-            </Badge>
           </Link>
         </nav>
 
