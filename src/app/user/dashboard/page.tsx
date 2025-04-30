@@ -29,6 +29,7 @@ export default function Home() {
   const { user } = useSession();
   const userId = user?.supabaseUserId ?? "";
 
+  // 今週と先週の学習時間を取得（週間統計で使用）
   const { data: weeklyDurationData } = useSWR(
     userId
       ? `/api/user/weekly-learning-duration?supabaseUserId=${userId}`
@@ -36,21 +37,25 @@ export default function Home() {
     fetcher
   );
 
+  // 週間学習グラフ用データを取得（棒グラフで使用）
   const { data: weeklyChart } = useSWR(
     userId ? `/api/user/weekly-chart-data?supabaseUserId=${userId}` : null,
     fetcher
   );
 
+  // カテゴリ別の学習割合データを取得（円グラフで使用）
   const { data: categoryRaw } = useSWR(
     userId ? `/api/user/category-distribution?supabaseUserId=${userId}` : null,
     fetcher
   );
 
+  // ヒートマップ用の学習日データを取得
   const { data: heatmapData } = useSWR(
     userId ? `/api/user/heatmap?supabaseUserId=${userId}` : null,
     fetcher
   );
 
+  // 最近の学習記録データを取得（直近5件程度）
   const { data: recentRecords } = useSWR(
     userId
       ? `/api/user/recent-learning-records?supabaseUserId=${userId}`
@@ -58,6 +63,7 @@ export default function Home() {
     fetcher
   );
 
+  // 継続日数データ（現在の連続日数・過去最高記録）を取得
   const { data: streakData } = useSWR(
     userId ? `/api/user/learning-streak?supabaseUserId=${userId}` : null,
     fetcher
