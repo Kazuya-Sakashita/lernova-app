@@ -12,28 +12,21 @@ import type { RawRecord, LearningRecord } from "@/app/_types/formTypes";
 import { convertToUTC } from "@/app/_utils/timeUtils";
 import { format } from "date-fns";
 import { useSession } from "@/app/_utils/session";
+import { useLearningRecords } from "@/app/_hooks/useLearningRecords";
 
 export default function TimeInputPage() {
   const router = useRouter();
   const { user } = useSession();
+  const { records, refreshLearningRecords } = useLearningRecords();
 
-  // 入力状態
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [newCategory, setNewCategory] = useState("");
   const [content, setContent] = useState("");
-
-  // タイマー状態
   const [isLearning, setIsLearning] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
-
-  // 保存中かどうか
   const [isSaving, setIsSaving] = useState(false);
 
-  // 最新学習記録
-  const [recentLearning, setRecentLearning] = useState<LearningRecord[]>([]);
-
-  // ✅ タイマー実行中のナビゲーションガード（リロードや画面移動を防止）
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isLearning) {
@@ -50,7 +43,7 @@ export default function TimeInputPage() {
         )
       ) {
         e.preventDefault();
-        window.history.pushState(null, "", window.location.href); // 強制的に履歴を戻す
+        window.history.pushState(null, "", window.location.href);
       }
     };
 
@@ -81,46 +74,6 @@ export default function TimeInputPage() {
     };
   }, [isLearning]);
 
-  // レスポンスデータをフロントエンド用に変換
-  const transformRecord = (raw: RawRecord): LearningRecord => ({
-    id: raw.id,
-    title: raw.title,
-    categoryId: raw.category.id,
-    content: raw.content,
-    startTime: raw.start_time,
-    endTime: raw.end_time,
-    supabaseUserId: raw.supabaseUserId,
-    date: new Date(raw.learning_date),
-    duration: raw.duration,
-  });
-
-  // ✅ 最新学習記録を取得
-  const fetchLearningRecords = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const res = await fetch(
-        `/api/user/learning-record?supabaseUserId=${user.id}`
-      );
-      const data: RawRecord[] = await res.json();
-      const list = data.map(transformRecord);
-      list.sort((a, b) => b.date.getTime() - a.date.getTime());
-      setRecentLearning(list.slice(0, 5));
-    } catch (err) {
-      console.error("学習記録取得エラー", err);
-      toast({
-        title: "取得エラー",
-        description: "学習記録の取得に失敗しました",
-        variant: "destructive",
-      });
-    }
-  }, [user?.id]);
-
-  // ✅ マウント時に学習記録を取得
-  useEffect(() => {
-    fetchLearningRecords();
-  }, [fetchLearningRecords]);
-
-  // ✅ タイマー開始処理
   const handleStart = useCallback(() => {
     if (!title)
       return toast({ title: "タイトルが必要です", variant: "destructive" });
@@ -134,9 +87,8 @@ export default function TimeInputPage() {
     toast({ title: "タイマー開始", description: `${title} を記録中` });
   }, [title, category, newCategory]);
 
-  // ✅ タイマー停止＋学習記録保存処理
   const handleStop = useCallback(async () => {
-    if (isSaving) return;
+    if (isSaving || !user?.id) return;
     setIsSaving(true);
 
     const st = localStorage.getItem("learning_start_time");
@@ -165,7 +117,7 @@ export default function TimeInputPage() {
       startTime: utcStart,
       endTime: utcEnd,
       duration: durationHours,
-      supabaseUserId: user?.id,
+      supabaseUserId: user.id,
     };
 
     try {
@@ -173,7 +125,7 @@ export default function TimeInputPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${user?.token}`,
+          Authorization: `Bearer ${user.token}`,
         },
         body: JSON.stringify(recordToSave),
       });
@@ -189,7 +141,7 @@ export default function TimeInputPage() {
       });
       setIsLearning(false);
       setStartTime(null);
-      fetchLearningRecords();
+      await refreshLearningRecords(user.id);
     } catch (err) {
       console.error("保存エラー:", err);
       toast({
@@ -205,13 +157,11 @@ export default function TimeInputPage() {
     category,
     newCategory,
     content,
-    user?.id,
-    user?.token,
-    fetchLearningRecords,
+    user,
+    refreshLearningRecords,
     isSaving,
   ]);
 
-  // ✅ 入力リセット処理
   const handleReset = useCallback(() => {
     setIsLearning(false);
     setStartTime(null);
@@ -222,10 +172,21 @@ export default function TimeInputPage() {
     toast({ title: "リセットしました" });
   }, []);
 
-  // ✅ 学習履歴ページへ遷移
   const onViewAll = useCallback(() => {
     router.push("/user/learning-history");
   }, [router]);
+
+  const transformRecord = (raw: RawRecord): LearningRecord => ({
+    id: raw.id,
+    title: raw.title,
+    categoryId: raw.category.id,
+    content: raw.content,
+    startTime: raw.start_time,
+    endTime: raw.end_time,
+    supabaseUserId: raw.supabaseUserId,
+    date: new Date(raw.learning_date),
+    duration: raw.duration,
+  });
 
   return (
     <div className="space-y-6">
@@ -252,7 +213,7 @@ export default function TimeInputPage() {
         </div>
         <div className="space-y-6">
           <RecentLearningCard
-            recentLearning={recentLearning}
+            recentLearning={(records ?? []).map(transformRecord).slice(0, 5)}
             onViewAll={onViewAll}
           />
         </div>
