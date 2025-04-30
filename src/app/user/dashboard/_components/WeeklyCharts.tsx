@@ -38,31 +38,34 @@ interface Props {
 // ================================
 
 const WeeklyCharts = ({ chartData, categoryData }: Props) => (
-  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-    {/* 左：棒グラフ（週間学習時間） */}
-    <Card className="col-span-4">
-      <CardHeader>
-        <CardTitle>週間学習時間</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <LearningProgressChart
-          data={{ ...chartData, labels: chartData.labels! }} // labels が undefined ではない前提で明示
-        />
-      </CardContent>
-    </Card>
+  console.log("WeeklyCharts", { chartData, categoryData }),
+  (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+      {/* 左：棒グラフ（週間学習時間） */}
+      <Card className="col-span-4">
+        <CardHeader>
+          <CardTitle>週間学習時間</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LearningProgressChart
+            data={{ ...chartData, labels: chartData.labels! }} // labels が undefined ではない前提で明示
+          />
+        </CardContent>
+      </Card>
 
-    {/* 右：円グラフ（カテゴリ別） */}
-    <Card className="col-span-3">
-      <CardHeader>
-        <CardTitle>カテゴリ別学習時間</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <CategoryChart
-          data={{ ...categoryData, labels: categoryData.labels! }} // 同様に labels 明示
-        />
-      </CardContent>
-    </Card>
-  </div>
+      {/* 右：円グラフ（カテゴリ別） */}
+      <Card className="col-span-3">
+        <CardHeader>
+          <CardTitle>カテゴリ別学習時間</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CategoryChart
+            data={{ ...categoryData, labels: categoryData.labels! }} // 同様に labels 明示
+          />
+        </CardContent>
+      </Card>
+    </div>
+  )
 );
 
 export default WeeklyCharts;
