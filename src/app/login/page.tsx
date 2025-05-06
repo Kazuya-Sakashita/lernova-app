@@ -1,104 +1,104 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@utils/supabase"; // Supabaseのインポート
-import { useRouter } from "next/navigation"; // ルーターのインポート
-import { useForm } from "react-hook-form"; // フォーム管理用のフック
-import { Label } from "@ui/label"; // ラベルコンポーネントのインポート
-import { Button } from "@ui/button"; // ボタンコンポーネントのインポート
-import { Input } from "@ui/input"; // 入力フォームコンポーネントのインポート
-import Link from "next/link"; // リンクコンポーネントのインポート
-import { LoginFormData } from "@/app/_types/formTypes"; // フォームデータの型定義
-import AppLogoLink from "../_components/AppLogoLink"; // アプリロゴリンクのコンポーネント
+import { supabase } from "@utils/supabase"; // Supabaseクライアント
+import { useRouter } from "next/navigation"; // Next.jsのrouter
+import { useForm } from "react-hook-form"; // フォーム管理
+import { Label } from "@ui/label"; // ラベルUIコンポーネント
+import { Button } from "@ui/button"; // ボタンUIコンポーネント
+import { Input } from "@ui/input"; // 入力フィールドUIコンポーネント
+import Link from "next/link"; // ページ遷移用Link
+import { LoginFormData } from "@/app/_types/formTypes"; // フォームデータ型
+import AppLogoLink from "../_components/AppLogoLink"; // ロゴリンクコンポーネント
+import { useLearningRecords } from "@/app/_hooks/useLearningRecords"; // ✅ 学習記録フェッチ用カスタムフック
 
 export default function LoginPage() {
-  const [error, setError] = useState<string | null>(null); // エラーメッセージの状態管理
-  const [emailSent, setEmailSent] = useState<boolean>(false); // 確認メール送信状態
-  const router = useRouter(); // useRouterフックを使用してページ遷移
+  const [error, setError] = useState<string | null>(null); // 認証エラーメッセージ
+  const [emailSent, setEmailSent] = useState<boolean>(false); // メール再送信フラグ
+  const router = useRouter(); // ページ遷移用
+  const { refreshLearningRecords } = useLearningRecords(); // ✅ 学習記録のキャッシュ更新関数
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    getValues, // getValues をインポートしてフォームの値を取得
-  } = useForm<LoginFormData>(); // react-hook-formのuseFormフック
+    getValues,
+  } = useForm<LoginFormData>(); // react-hook-formによるフォーム管理
 
   // ログイン処理
   const handleLogin = async (email: string, password: string) => {
-    console.log("ログイン処理開始", { email }); // ログイン開始時にemailをログに出力
+    console.log("ログイン処理開始", { email });
 
-    // supabaseのサインイン処理
     const { data: userData, error: authError } =
       await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-    // 認証エラーがある場合
     if (authError) {
-      console.log("認証エラー:", authError.message); // エラー時にエラーメッセージをログに出力
-      setError(authError.message); // エラーメッセージを設定
+      console.log("認証エラー:", authError.message);
+      setError(authError.message);
 
-      // Email not confirmedエラーの場合に再送信ボタン表示
       if (authError.message === "Email not confirmed") {
         setError("メールアドレスが未確認です。確認メールを開封してください。");
       }
-
       return null;
     }
 
-    // ユーザーが確認されている場合、ユーザー情報を返す
     if (userData?.user?.confirmed_at) {
-      console.log("ログイン成功:", userData.user); // ユーザー情報をログに出力
-      setError(null); // ログイン成功時にエラーメッセージをクリア
+      console.log("ログイン成功:", userData.user);
+      setError(null);
       return userData.user;
     } else {
-      console.log("未確認のメールアドレス"); // メール未確認時にログに出力
-      setError("メールアドレスが未確認です。確認メールを開封してください。"); // メール確認を促すエラー
+      console.log("未確認のメールアドレス");
+      setError("メールアドレスが未確認です。確認メールを開封してください。");
       return null;
     }
   };
 
-  // 確認メールを再送信する関数
+  // 確認メール再送信
   const resendVerificationEmail = async () => {
-    const email = getValues("email"); // フォームからメールアドレスを取得
+    const email = getValues("email");
 
-    // 確認メールを再送信するために、仮のパスワードを使ってsignUpを呼び出す
     const { error } = await supabase.auth.signUp({
       email,
-      password: "temporarypassword", // 仮のパスワードを設定（実際には変更されません）
+      password: "temporarypassword",
     });
 
     if (error) {
       alert("確認メールの再送信に失敗しました: " + error.message);
     } else {
-      setEmailSent(true); // 再送信後に状態を更新
+      setEmailSent(true);
       alert("確認メールを再送信しました。");
     }
   };
 
   // フォーム送信時の処理
   const onSubmit = async (data: LoginFormData) => {
-    setError(null); // エラーメッセージをリセット
-    const user = await handleLogin(data.email, data.password); // ログイン処理
+    setError(null);
+    const user = await handleLogin(data.email, data.password);
 
-    // ログイン成功時、ホームページにリダイレクト
     if (user) {
-      router.push("/user/dashboard"); // ログイン成功後、ホームページにリダイレクト
+      // ✅ ログイン後に学習記録（直近3ヶ月）を取得してキャッシュ
+      await refreshLearningRecords(user.id);
+      console.log("✅ 学習記録の取得とキャッシュ成功");
+
+      // ✅ ダッシュボードに遷移
+      router.push("/user/dashboard");
     }
   };
 
   return (
-    <div className="min-h-screen  flex justify-center">
+    <div className="min-h-screen flex justify-center">
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="w-full max-w-md space-y-6"
       >
+        {/* ロゴとタイトル */}
         <div className="text-center">
-          {/* アプリロゴ */}
           <AppLogoLink
-            href="/" // リンク先
-            logoText="Lernova" // ロゴのテキスト
+            href="/"
+            logoText="Lernova"
             textColor="text-pink-500"
             textSize="text-xl"
             iconColor="text-pink-500"
@@ -113,8 +113,9 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* フォーム入力エリア */}
         <div className="space-y-4">
-          {/* メールアドレス入力フォーム */}
+          {/* メールアドレス入力 */}
           <div className="space-y-1">
             <Label htmlFor="email">メールアドレス</Label>
             <Input
@@ -122,19 +123,20 @@ export default function LoginPage() {
               type="email"
               placeholder="example@example.com"
               {...register("email", {
-                required: "メールアドレスは必須です", // 必須バリデーション
+                required: "メールアドレスは必須です",
                 pattern: {
-                  value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, // メールアドレスの形式チェック
-                  message: "無効なメールアドレスです", // 不正な形式のエラーメッセージ
+                  value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+                  message: "無効なメールアドレスです",
                 },
               })}
-              className={`h-10 ${errors.email ? "border-red-500" : ""}`} // エラーがある場合に赤枠
+              className={`h-10 ${errors.email ? "border-red-500" : ""}`}
             />
             {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p> // エラーメッセージ表示
+              <p className="text-sm text-red-500">{errors.email.message}</p>
             )}
           </div>
-          {/* パスワード入力フォーム */}
+
+          {/* パスワード入力 */}
           <div className="space-y-1">
             <Label htmlFor="password">パスワード</Label>
             <Input
@@ -142,42 +144,43 @@ export default function LoginPage() {
               type="password"
               placeholder="••••••••"
               {...register("password", {
-                required: "パスワードは必須です", // 必須バリデーション
+                required: "パスワードは必須です",
                 minLength: {
                   value: 8,
-                  message: "パスワードは8文字以上である必要があります", // 最小文字数チェック
+                  message: "パスワードは8文字以上必要です",
                 },
               })}
-              className={`h-10 ${errors.password ? "border-red-500" : ""}`} // エラーがある場合に赤枠
+              className={`h-10 ${errors.password ? "border-red-500" : ""}`}
             />
             {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p> // エラーメッセージ表示
+              <p className="text-sm text-red-500">{errors.password.message}</p>
             )}
           </div>
-          {/* エラーメッセージ */}
-          {error && <p className="text-red-500 text-sm">{error}</p>}{" "}
-          {/* 認証エラーを表示 */}
-          {/* メール確認再送信ボタン */}
-          {error &&
-            error ===
-              "メールアドレスが未確認です。確認メールを開封してください。" && (
-              <div className="mt-4">
-                <Button
-                  type="button"
-                  onClick={resendVerificationEmail} // 再メール送信
-                  className="w-full bg-pink-500 text-white hover:bg-pink-600"
-                >
-                  確認メールを再送信
-                </Button>
-                {emailSent && (
-                  <p className="text-green-500 text-sm mt-2">
-                    確認メールを再送信しました。
-                  </p>
-                )}
-              </div>
-            )}
+
+          {/* エラーメッセージ表示 */}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+
+          {/* 確認メール再送信案内 */}
+          {error ===
+            "メールアドレスが未確認です。確認メールを開封してください。" && (
+            <div className="mt-4">
+              <Button
+                type="button"
+                onClick={resendVerificationEmail}
+                className="w-full bg-pink-500 text-white hover:bg-pink-600"
+              >
+                確認メールを再送信
+              </Button>
+              {emailSent && (
+                <p className="text-green-500 text-sm mt-2">
+                  確認メールを再送信しました。
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
+        {/* ログインボタン */}
         <Button
           type="submit"
           className="w-full bg-pink-500 text-white hover:bg-pink-600"

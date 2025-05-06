@@ -21,7 +21,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@utils/*": ["src/app/_utils/*"], // _utils 以下をエイリアスで設定
-      "@hooks/*": ["src/app/_hooks/*"], // _utils 以下をエイリアスで設定
+      "@hooks/*": ["src/app/_hooks/*"], // _hooks 以下をエイリアスで設定
       "@components/*": ["src/app/_components/*"], // _components 以下をエイリアスで設定
       "@ui/*": ["src/app/_components/ui/*"] // ui 以下をエイリアスで設定
     }
