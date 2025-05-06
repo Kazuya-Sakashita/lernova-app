@@ -1,76 +1,55 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import useSWR from "swr";
+import React, { useState } from "react";
 import { mutate } from "swr";
 import LearningRecordDialog from "./_components/LearningRecordDialog";
 import LearningRecordTable from "./_components/LearningRecordTable";
 import HeatmapSection from "@/app/user/dashboard/_components/HeatmapSection";
-import { LearningRecord, RawRecord } from "@/app/_types/formTypes";
+import { LearningRecord } from "@/app/_types/formTypes";
 import { useSession } from "@utils/session";
 import { fetcher } from "@utils/fetcher";
+import useSWR from "swr";
+import { useLearningRecords } from "@hooks/useLearningRecords"; // ✅ SWRからの取得に切り替え
 
 const LearningHistory = () => {
-  const [records, setRecords] = useState<LearningRecord[]>([]);
   const [recordToEdit, setRecordToEdit] = useState<LearningRecord | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const { user } = useSession();
   const userId = user?.supabaseUserId ?? "";
 
-  // ✅ ヒートマップデータ取得
+  // ✅ SWRで学習記録を取得
+  const { records: rawRecords, refreshLearningRecords } =
+    useLearningRecords(userId);
+
+  // ✅ SWRでヒートマップデータを取得
   const { data: heatmapData } = useSWR(
     userId ? `/api/user/heatmap?supabaseUserId=${userId}` : null,
     fetcher
   );
 
-  // ヒートマップ更新関数を作成
+  // ✅ ヒートマップ再取得
   const refreshHeatmap = () => {
-    if (user?.supabaseUserId) {
-      console.log("ヒートマップのデータを更新");
-      mutate(`/api/user/heatmap?supabaseUserId=${user.supabaseUserId}`);
+    if (userId) {
+      mutate(`/api/user/heatmap?supabaseUserId=${userId}`);
     }
   };
 
-  // 学習記録を変換する関数
-  const transformRecord = (rawRecord: RawRecord): LearningRecord => ({
-    id: rawRecord.id,
-    supabaseUserId: rawRecord.supabaseUserId,
-    categoryId: rawRecord.category.id,
-    title: rawRecord.title,
-    date: new Date(rawRecord.learning_date),
-    startTime: rawRecord.start_time,
-    endTime: rawRecord.end_time,
-    duration: rawRecord.duration,
-    content: rawRecord.content,
-  });
+  // ✅ RawRecord → LearningRecord に変換
+  const transformedRecords: LearningRecord[] = (rawRecords ?? []).map((r) => ({
+    id: r.id,
+    supabaseUserId: r.supabaseUserId,
+    categoryId: r.category.id,
+    title: r.title,
+    date: new Date(r.learning_date),
+    startTime: r.start_time,
+    endTime: r.end_time,
+    duration: r.duration,
+    content: r.content,
+  }));
 
-  // 学習記録をフェッチする関数
-  const fetchLearningRecords = useCallback(async () => {
-    if (!user?.id) return console.error("ユーザーIDが見つかりません");
-
-    try {
-      const response = await fetch(
-        `/api/user/learning-history?supabaseUserId=${user.id}`
-      );
-      const data: RawRecord[] = await response.json();
-      const transformedRecords = data
-        .map(transformRecord)
-        .sort((a, b) => b.date.getTime() - a.date.getTime());
-      setRecords(transformedRecords);
-    } catch (error) {
-      console.error("学習記録の取得エラー:", error);
-      alert("学習記録の取得に失敗しました");
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (user?.id) fetchLearningRecords();
-  }, [user?.id, fetchLearningRecords]);
-
-  // 学習記録追加
+  // ✅ 学習記録の追加
   const handleAddRecord = async (newRecord: LearningRecord) => {
     setIsSaving(true);
-
     try {
       const response = await fetch(`/api/user/learning-history`, {
         method: "POST",
@@ -83,7 +62,7 @@ const LearningHistory = () => {
 
       if (!response.ok) throw new Error("学習記録の保存に失敗しました");
 
-      await fetchLearningRecords();
+      await refreshLearningRecords(userId);
       refreshHeatmap();
     } catch (error) {
       console.error(error);
@@ -92,7 +71,7 @@ const LearningHistory = () => {
     setIsSaving(false);
   };
 
-  // 学習記録削除
+  // ✅ 学習記録の削除
   const handleDeleteRecord = async (id: string) => {
     if (!window.confirm("本当にこの学習記録を削除しますか？")) return;
 
@@ -107,7 +86,7 @@ const LearningHistory = () => {
 
       if (!response.ok) throw new Error("学習記録の削除に失敗しました");
 
-      setRecords(records.filter((record) => record.id !== id));
+      await refreshLearningRecords(userId);
       refreshHeatmap();
     } catch (error) {
       console.error(error);
@@ -115,14 +94,14 @@ const LearningHistory = () => {
     }
   };
 
-  // 学習記録編集
+  // ✅ 編集モード開始
   const handleEditRecord = (record: LearningRecord) => {
     setRecordToEdit(record);
   };
 
+  // ✅ 学習記録の保存（編集）
   const handleSaveRecord = async (updatedRecord: LearningRecord) => {
     setIsSaving(true);
-
     try {
       const response = await fetch(
         `/api/user/learning-history/${updatedRecord.id}`,
@@ -138,11 +117,7 @@ const LearningHistory = () => {
 
       if (!response.ok) throw new Error("学習記録の更新に失敗しました");
 
-      setRecords((prev) =>
-        prev.map((record) =>
-          record.id === updatedRecord.id ? updatedRecord : record
-        )
-      );
+      await refreshLearningRecords(userId);
       setRecordToEdit(null);
       refreshHeatmap();
     } catch (error) {
@@ -156,11 +131,10 @@ const LearningHistory = () => {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">学習履歴</h1>
 
-      {/* ✅ 学習進捗カード（Heatmapに差し替え） */}
-
+      {/* ✅ 学習進捗ヒートマップ */}
       <HeatmapSection data={heatmapData ?? []} />
 
-      {/* 学習記録追加と一覧 */}
+      {/* ✅ タイトルと追加ダイアログ */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">学習記録一覧</h2>
         <LearningRecordDialog
@@ -173,8 +147,9 @@ const LearningHistory = () => {
         />
       </div>
 
+      {/* ✅ 記録一覧テーブル */}
       <LearningRecordTable
-        records={records}
+        records={transformedRecords}
         handleDeleteRecord={handleDeleteRecord}
         handleEditRecord={handleEditRecord}
       />

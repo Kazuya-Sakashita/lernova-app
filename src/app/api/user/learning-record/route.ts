@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/app/_utils/prisma"; // Prisma Clientをインポート
-import { authenticateUser } from "@/app/_utils/authenticateUser"; // 認証ミドルウェアをインポート
+import { prisma } from "@/app/_utils/prisma";
+import { authenticateUser } from "@/app/_utils/authenticateUser";
+import { subMonths } from "date-fns";
+import { Prisma } from "@prisma/client";
 
-// POSTリクエストで学習記録を作成するAPIエンドポイント
+// -----------------------------
+// POST: 学習記録の新規作成
+// -----------------------------
 export async function POST(req: NextRequest) {
+  // ✅ 認証チェック（失敗した場合はエラーレスポンス）
   const authError = await authenticateUser(req);
-  if (authError) {
-    return authError; // 認証に失敗した場合はエラーを返す
-  }
+  if (authError) return authError;
 
   try {
-    const body = await req.json(); // ReadableStreamをJSONとして読み込む
+    // ✅ リクエストボディのパース
+    const body = await req.json();
     const {
       supabaseUserId,
       categoryId,
@@ -22,9 +26,7 @@ export async function POST(req: NextRequest) {
       content,
     } = body;
 
-    console.log("受け取ったデータ:", body);
-
-    // 必須のフィールドがすべて存在するかを確認
+    // ✅ 必須フィールドのバリデーション
     if (
       !supabaseUserId ||
       !categoryId ||
@@ -41,6 +43,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ✅ Prisma経由で学習記録を保存
     const newRecord = await prisma.learningRecord.create({
       data: {
         supabaseUserId,
@@ -54,8 +57,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    console.log("学習記録が正常に保存されました:", newRecord);
-
     return NextResponse.json(newRecord, { status: 200 });
   } catch (error) {
     console.error("学習記録保存エラー:", error);
@@ -66,14 +67,17 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GETリクエストで学習記録を取得するAPIエンドポイント
+// -----------------------------
+// GET: 学習記録の取得
+// （例: ?supabaseUserId=xxx&period=3months）
+// -----------------------------
 export async function GET(req: NextRequest) {
   try {
-    // URLのクエリパラメータからsupabaseUserIdを取得
     const { searchParams } = new URL(req.url);
     const supabaseUserId = searchParams.get("supabaseUserId");
+    const period = searchParams.get("period"); // 期間指定（例: "3months"）
 
-    // supabaseUserIdが提供されていない場合、エラーレスポンスを返す
+    // ✅ ユーザーIDの存在チェック
     if (!supabaseUserId) {
       return NextResponse.json(
         { message: "ユーザーIDが指定されていません" },
@@ -81,15 +85,30 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Prismaを使用して、supabaseUserIdに基づいて学習記録を取得
+    // ✅ フィルター条件の構築
+    const today = new Date();
+    const where: Prisma.LearningRecordWhereInput = {
+      supabaseUserId,
+    };
+
+    if (period === "3months") {
+      where.learning_date = {
+        gte: subMonths(today, 3), // 3ヶ月前～
+        lte: today, // 今日まで
+      };
+    }
+
+    // ✅ Prismaで学習記録を取得（最新順）
     const records = await prisma.learningRecord.findMany({
-      where: { supabaseUserId }, // supabaseUserIdでフィルター
+      where,
       include: {
-        category: true, // 必要に応じてカテゴリーを含める（任意）
+        category: true, // カテゴリ情報も含める
+      },
+      orderBy: {
+        learning_date: "desc",
       },
     });
 
-    // 学習記録が存在する場合、レスポンスとして返す
     return NextResponse.json(records, { status: 200 });
   } catch (error) {
     console.error("学習記録取得エラー:", error);
