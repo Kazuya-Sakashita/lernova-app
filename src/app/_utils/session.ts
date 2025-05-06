@@ -1,39 +1,45 @@
+"use client";
+
 import useSWR, { mutate } from "swr";
 import { supabase } from "./supabase";
+import { preloadLearningRecords } from "@/app/_hooks/useLearningRecords"; // ✅ ログイン時の学習記録事前取得関数をインポート
 
-// ユーザー情報を取得するためのfetcher関数
+// ---------------------------------------------
+// 🔄 fetchUserData: ユーザー情報を取得する非同期関数
+// - Supabaseのセッションからユーザー情報を取得
+// - Userテーブルからニックネーム・ロール情報を取得
+// - ログイン時に学習記録をプリロードしてSWRにキャッシュ
+// ---------------------------------------------
 const fetchUserData = async () => {
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
+  // ✅ セッションが存在し、ユーザーがログインしている場合のみ処理を継続
   if (session?.user) {
     const user = session.user;
 
-    console.log("Session User ID:", user.id); // ユーザーIDをログに出力
+    console.log("Session User ID:", user.id); // ✅ Supabase認証IDの確認ログ
 
-    // 'User'テーブルからニックネームとroleIdを取得
+    // ✅ Userテーブルからnickname, roleId, supabaseUserId を取得
     const { data, error } = await supabase
       .from("User")
-      .select("nickname, roleId, supabaseUserId") // supabaseUserIdも取得
-      .eq("supabaseUserId", user.id); // supabaseUserId を使って検索
+      .select("nickname, roleId, supabaseUserId")
+      .eq("supabaseUserId", user.id);
 
     if (error) {
       console.error("ユーザー情報の取得エラー:", error.message);
       return null;
     }
 
-    console.log("取得したデータ:", data); // 取得したデータをログに出力
-
     if (!data || data.length === 0) {
       console.error("ユーザーが見つかりませんでした");
       return null;
     }
 
-    // 最初のデータを取得（複数行が返されていた場合）
     const userData = data[0];
 
-    // Roleテーブルからrole_nameを取得
+    // ✅ Roleテーブルからロール名を取得
     const { data: roleData, error: roleError } = await supabase
       .from("Role")
       .select("role_name")
@@ -45,42 +51,52 @@ const fetchUserData = async () => {
       return null;
     }
 
-    console.log("取得した役職データ:", roleData); // 役職データをログに出力
-
     const isAdmin = roleData?.role_name === "admin";
 
+    // ✅ ログイン時に学習記録をSWRにプリロード
+    if (userData.supabaseUserId) {
+      preloadLearningRecords(userData.supabaseUserId).catch((err) =>
+        console.error("学習記録のプリロードに失敗:", err)
+      );
+    }
+
+    // ✅ ユーザー情報を整形して返す
     return {
       session,
       email: user.email,
       id: user.id,
-      supabaseUserId: userData?.supabaseUserId, // supabaseUserId を追加
-      nickname: userData?.nickname || user.email, // nicknameがない場合はemailを使用
+      supabaseUserId: userData?.supabaseUserId,
+      nickname: userData?.nickname || user.email, // ニックネームがない場合はemailを使用
       isAdmin,
-      token: session.access_token, // トークンを返す
+      token: session.access_token,
     };
   }
 
+  // ✅ セッションが存在しない場合（未ログイン）は null を返す
   return null;
 };
 
-// useSessionフックでSWRを使用してユーザー情報を管理
+// ---------------------------------------------
+// useSession: ユーザー情報取得用のカスタムフック
+// - fetchUserData をSWRで管理
+// - ログアウト処理も提供
+// ---------------------------------------------
 export const useSession = () => {
   const { data, error } = useSWR("user", fetchUserData);
 
-  // ログアウト処理
+  // 🔓 ログアウト処理（セッション削除＆キャッシュリセット）
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    mutate("user", null); // SWRキャッシュをリセット
+    mutate("user", null);
   };
 
-  // isLoadingとisErrorをSWRで提供される情報をそのまま使用
   return {
     session: data?.session,
     user: data,
-    token: data?.token, // トークンも返す
-    supabaseUserId: data?.supabaseUserId, // supabaseUserIdを追加
-    isLoading: !data && !error, // ローディング状態
-    isError: error, // エラー状態
-    handleLogout, // ログアウト関数
+    token: data?.token,
+    supabaseUserId: data?.supabaseUserId,
+    isLoading: !data && !error,
+    isError: error,
+    handleLogout,
   };
 };
