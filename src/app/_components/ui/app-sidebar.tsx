@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "@utils/session";
 import { useLogout } from "@hooks/useLogout";
 import { Button } from "./button";
-import { Badge } from "@ui/badge"; // バッジ
+import { Badge } from "@ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -18,7 +17,6 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@ui/sidebar";
-
 import {
   Home,
   BookOpen,
@@ -34,8 +32,6 @@ import {
   Users,
   FileText,
   PieChart,
-  HelpCircle,
-  Bookmark,
 } from "lucide-react";
 
 // ✅ メニューアイテムの型定義
@@ -44,6 +40,7 @@ type MenuItemType = {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   isUnderDevelopment?: boolean;
+  manualNav?: boolean;
 };
 
 // ✅ メニューアイテム共通コンポーネント
@@ -53,16 +50,21 @@ const MenuItem = ({
   label,
   isActive,
   isUnderDevelopment,
+  onClick,
 }: {
   href: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   isActive: boolean;
   isUnderDevelopment?: boolean;
+  onClick?: () => void;
 }) => (
   <SidebarMenuItem>
     <SidebarMenuButton asChild isActive={isActive}>
-      <Link href={href}>
+      <button
+        onClick={onClick}
+        className="flex items-center gap-2 w-full text-left"
+      >
         <Icon className="h-4 w-4" />
         <span className="flex items-center gap-2">
           {label}
@@ -75,7 +77,7 @@ const MenuItem = ({
             </Badge>
           )}
         </span>
-      </Link>
+      </button>
     </SidebarMenuButton>
   </SidebarMenuItem>
 );
@@ -84,9 +86,9 @@ export function AppSidebar() {
   const { user, isLoading, isError } = useSession();
   const { handleLogout } = useLogout();
   const pathname = usePathname();
+  const router = useRouter();
 
   const isLoggedIn = !!user?.email;
-  const userId = user?.id ?? null;
   const isAdmin = user?.isAdmin ?? false;
 
   const isActive = (path: string) =>
@@ -105,7 +107,20 @@ export function AppSidebar() {
     return <div>ユーザー情報の取得に失敗しました。</div>;
   }
 
-  // ✅ メニュー一覧
+  const handleManualNav = (href: string) => () => {
+    const hasOngoingTimer = !!localStorage.getItem("learning_start_time");
+
+    if (hasOngoingTimer) {
+      const confirmed = window.confirm(
+        "タイマーが実行中です。このまま移動するとタイマーが停止しますが、よろしいですか？"
+      );
+      if (!confirmed) return;
+      localStorage.removeItem("learning_start_time"); // タイマー状態リセット
+    }
+
+    router.push(href);
+  };
+
   const menuItems: {
     loggedIn: MenuItemType[];
     learningManagement: MenuItemType[];
@@ -114,21 +129,39 @@ export function AppSidebar() {
     loggedOut: MenuItemType[];
   } = {
     loggedIn: [
-      { href: "/", icon: Home, label: "ホーム" },
-      { href: "/learning-support", icon: BookOpen, label: "学習サポート概要" },
-      { href: `/user/learning-record`, icon: PlusCircle, label: "学習を記録" },
+      { href: "/", icon: Home, label: "ホーム", manualNav: true },
+      {
+        href: "/learning-support",
+        icon: BookOpen,
+        label: "学習サポート概要",
+        manualNav: true,
+      },
+      {
+        href: `/user/learning-record`,
+        icon: PlusCircle,
+        label: "学習を記録",
+        manualNav: true,
+      },
     ],
     learningManagement: [
-      { href: "/user/dashboard", icon: BarChart2, label: "ダッシュボード" },
-      { href: `/user/learning-record`, icon: Clock, label: "学習記録" },
-      { href: `/user/learning-history`, icon: History, label: "学習履歴" },
-
-      // {
-      //   href: `/user/${userId}/progress`,
-      //   icon: BarChart2,
-      //   label: "進捗管理",
-      //   isUnderDevelopment: true,
-      // },
+      {
+        href: "/user/dashboard",
+        icon: BarChart2,
+        label: "ダッシュボード",
+        manualNav: true,
+      },
+      {
+        href: "/user/learning-record",
+        icon: Clock,
+        label: "学習記録",
+        manualNav: true,
+      },
+      {
+        href: "/user/learning-history",
+        icon: History,
+        label: "学習履歴",
+        manualNav: true,
+      },
     ],
     community: [
       {
@@ -138,7 +171,7 @@ export function AppSidebar() {
         isUnderDevelopment: true,
       },
       {
-        href: `/user/follow/share-record`,
+        href: "/user/follow/share-record",
         icon: Heart,
         label: "学習記録共有",
         isUnderDevelopment: true,
@@ -177,6 +210,7 @@ export function AppSidebar() {
         label={item.label}
         isActive={isActive(item.href)}
         isUnderDevelopment={item.isUnderDevelopment}
+        onClick={item.manualNav ? handleManualNav(item.href) : undefined}
       />
     ));
 
@@ -201,17 +235,6 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {/*
-            <SidebarGroup>
-              <SidebarGroupLabel>コミュニティ</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {renderMenuItems(menuItems.community)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-            */}
-
             {isAdmin && (
               <>
                 <SidebarSeparator />
@@ -233,29 +256,6 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-
-        {/*
-        <SidebarGroup>
-          <SidebarGroupLabel>サポート</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <MenuItem
-                href="/support"
-                icon={HelpCircle}
-                label="サポート"
-                isActive={isActive("/support")}
-                isUnderDevelopment={true}
-              />
-              <MenuItem
-                href="/privacy-policy"
-                icon={Bookmark}
-                label="プライバシーポリシー"
-                isActive={isActive("/privacy-policy")}
-              />
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        */}
 
         {isLoggedIn && (
           <Button
