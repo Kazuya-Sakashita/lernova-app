@@ -16,6 +16,10 @@ export const getPastNDatesJST = (
   return Array.from({ length: n }, (_, i) => formatDateJST(subDays(from, i)));
 };
 
-// 2つの日付の差分（日数）を返す
-export const getDateDiffInDays = (date1: Date, date2: Date): number =>
-  Math.floor((date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24));
+// 2つの日付の差分（日数）を返す（JST変換後に比較）
+export const getDateDiffInDays = (date1: Date, date2: Date): number => {
+  const jstDate1 = toZonedTime(date1, JST);
+  const jstDate2 = toZonedTime(date2, JST);
+  const diffMs = jstDate1.getTime() - jstDate2.getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+};
