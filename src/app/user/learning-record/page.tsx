@@ -33,6 +33,17 @@ export default function TimeInputPage() {
   // 最新学習記録
   const [recentLearning, setRecentLearning] = useState<LearningRecord[]>([]);
 
+  // ✅ 初回マウント時に learning_start_time の整合性を確認し、不正なら削除
+  useEffect(() => {
+    const stored = localStorage.getItem("learning_start_time");
+    if (stored) {
+      const parsed = new Date(stored);
+      if (isNaN(parsed.getTime())) {
+        localStorage.removeItem("learning_start_time");
+      }
+    }
+  }, []);
+
   // ✅ タイマー実行中のナビゲーションガード（リロードや画面移動を防止）
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -190,6 +201,7 @@ export default function TimeInputPage() {
       setIsLearning(false);
       setStartTime(null);
       fetchLearningRecords();
+      localStorage.removeItem("learning_start_time");
     } catch (err) {
       console.error("保存エラー:", err);
       toast({
@@ -220,6 +232,7 @@ export default function TimeInputPage() {
     setNewCategory("");
     setContent("");
     toast({ title: "リセットしました" });
+    localStorage.removeItem("learning_start_time");
   }, []);
 
   // ✅ 学習履歴ページへ遷移
