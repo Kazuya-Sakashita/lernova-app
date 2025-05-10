@@ -82,10 +82,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  // ヘッダーからsupabaseUserIdを取得
+  // リクエストヘッダーから supabaseUserId を取得
   const supabaseUserId = req.headers.get("supabaseUserId");
-  console.log("supabaseUserId:", supabaseUserId);
 
+  // supabaseUserId が存在しない場合は 400 を返す
   if (!supabaseUserId) {
     return NextResponse.json(
       { message: "supabaseUserIdが提供されていません。" },
@@ -93,21 +93,43 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // supabaseUserIdを使ってプロフィールを検索
-  const profile = await prisma.profile.findUnique({
-    where: {
-      supabaseUserId: String(supabaseUserId),
-    },
+  // user テーブルから nickname を取得（nickname は user に保存されている）
+  const user = await prisma.user.findUnique({
+    where: { supabaseUserId },
+    select: { nickname: true },
   });
 
-  if (!profile) {
+  // ユーザーが存在しない場合は 404 を返す
+  if (!user) {
     return NextResponse.json(
-      { message: "プロフィールが見つかりません。" },
+      { message: "ユーザーが見つかりません。" },
       { status: 404 }
     );
   }
 
-  console.log("取得したプロフィール:", profile);
+  // profile テーブルからプロフィールを取得（存在しない場合もあり得る）
+  const profile = await prisma.profile.findUnique({
+    where: { supabaseUserId },
+  });
 
-  return NextResponse.json(profile, { status: 200 });
+  // プロフィール未登録時に返すデフォルトの空データを定義
+  const defaultProfile = {
+    supabaseUserId,
+    first_name: "",
+    last_name: "",
+    gender: "",
+    bio: "",
+    phoneNumber: "",
+    socialLinks: "",
+    profile_picture: "",
+    date_of_birth: "",
+  };
+
+  // プロフィールがある場合はそれを返し、無ければ空データ + nickname を返す
+  const response = profile
+    ? { ...profile, nickname: user.nickname }
+    : { ...defaultProfile, nickname: user.nickname };
+
+  // 成功レスポンスとして返却
+  return NextResponse.json(response, { status: 200 });
 }

@@ -7,6 +7,7 @@ import { Button } from "@ui/button";
 import { Input } from "@ui/input";
 import { SignUpFormData } from "@/app/_types/formTypes";
 import AppLogoLink from "../_components/AppLogoLink";
+import { useState } from "react";
 
 export default function SignUpPage() {
   const {
@@ -16,8 +17,10 @@ export default function SignUpPage() {
     setError, // setError を使用する
     watch,
   } = useForm<SignUpFormData>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const onSubmit = async (data: SignUpFormData) => {
+    setIsSubmitting(true); // ✅ 開始時に状態を更新
     const { email, password, nickname } = data;
 
     // Supabase 認証のサインアップ
@@ -65,6 +68,7 @@ export default function SignUpPage() {
         }
       }
     }
+    setIsSubmitting(false); // ✅ 完了時に状態を更新
   };
 
   // パスワード確認のバリデーション
@@ -182,9 +186,10 @@ export default function SignUpPage() {
 
         <Button
           type="submit"
-          className="w-full h-10 bg-pink-500 hover:bg-pink-600"
+          disabled={isSubmitting}
+          className="w-full h-10 bg-pink-500 hover:bg-pink-600 disabled:opacity-50"
         >
-          アカウントを作成
+          {isSubmitting ? "登録中..." : "アカウントを作成"}
         </Button>
       </form>
     </div>
