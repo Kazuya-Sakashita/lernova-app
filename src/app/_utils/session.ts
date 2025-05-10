@@ -2,44 +2,33 @@
 
 import useSWR, { mutate } from "swr";
 import { supabase } from "./supabase";
-import { preloadLearningRecords } from "@/app/_hooks/useLearningRecords"; // ✅ ログイン時の学習記録事前取得関数をインポート
+import { preloadLearningRecords } from "@/app/_hooks/useLearningRecords";
 
-// ---------------------------------------------
-// 🔄 fetchUserData: ユーザー情報を取得する非同期関数
-// - Supabaseのセッションからユーザー情報を取得
-// - Userテーブルからニックネーム・ロール情報を取得
-// - ログイン時に学習記録をプリロードしてSWRにキャッシュ
-// ---------------------------------------------
-const fetchUserData = async () => {
+// 🔄 fetchUserData: ユーザーIDを引数として受け取り、ユーザーごとのキャッシュに対応
+const fetchUserData = async (userId: string | undefined) => {
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // ✅ セッションが存在し、ユーザーがログインしている場合のみ処理を継続
-  if (session?.user) {
+  if (session?.user && session.user.id === userId) {
     const user = session.user;
+    console.log("✅ [fetchUserData] セッション取得: ", user.id);
 
-    console.log("Session User ID:", user.id); // ✅ Supabase認証IDの確認ログ
-
-    // ✅ Userテーブルからnickname, roleId, supabaseUserId を取得
     const { data, error } = await supabase
       .from("User")
       .select("nickname, roleId, supabaseUserId")
       .eq("supabaseUserId", user.id);
 
-    if (error) {
-      console.error("ユーザー情報の取得エラー:", error.message);
-      return null;
-    }
-
-    if (!data || data.length === 0) {
-      console.error("ユーザーが見つかりませんでした");
+    if (error || !data || data.length === 0) {
+      console.error(
+        "❌ [fetchUserData] ユーザーデータ取得失敗:",
+        error?.message
+      );
       return null;
     }
 
     const userData = data[0];
 
-    // ✅ Roleテーブルからロール名を取得
     const { data: roleData, error: roleError } = await supabase
       .from("Role")
       .select("role_name")
@@ -47,47 +36,62 @@ const fetchUserData = async () => {
       .single();
 
     if (roleError) {
-      console.error("役職情報の取得エラー:", roleError.message);
+      console.error("❌ [fetchUserData] ロール取得失敗:", roleError.message);
       return null;
     }
 
-    const isAdmin = roleData?.role_name === "admin";
-
-    // ✅ ログイン時に学習記録をSWRにプリロード
     if (userData.supabaseUserId) {
+      console.log("⏳ [fetchUserData] 学習記録をプリロード中...");
       preloadLearningRecords(userData.supabaseUserId).catch((err) =>
-        console.error("学習記録のプリロードに失敗:", err)
+        console.error("❌ [fetchUserData] プリロード失敗:", err)
       );
     }
 
-    // ✅ ユーザー情報を整形して返す
+    console.log(`✅ [fetchUserData] ユーザーキャッシュ保存: user-${user.id}`);
+
     return {
       session,
       email: user.email,
       id: user.id,
       supabaseUserId: userData?.supabaseUserId,
-      nickname: userData?.nickname || user.email, // ニックネームがない場合はemailを使用
-      isAdmin,
+      nickname: userData?.nickname || user.email,
+      isAdmin: roleData?.role_name === "admin",
       token: session.access_token,
     };
   }
 
-  // ✅ セッションが存在しない場合（未ログイン）は null を返す
+  console.warn("⚠️ [fetchUserData] セッションがない、またはID不一致");
   return null;
 };
 
-// ---------------------------------------------
-// useSession: ユーザー情報取得用のカスタムフック
-// - fetchUserData をSWRで管理
-// - ログアウト処理も提供
-// ---------------------------------------------
+// ✅ useSession: ログイン状態とユーザー情報をSWRで管理するカスタムフック
 export const useSession = () => {
-  const { data, error } = useSWR("user", fetchUserData);
+  const { data: sessionData } = useSWR("supabase-session", async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    console.log("✅ [useSession] Supabaseセッションキャッシュ保存");
+    return session;
+  });
 
-  // 🔓 ログアウト処理（セッション削除＆キャッシュリセット）
+  const userId = sessionData?.user?.id;
+
+  const { data, error } = useSWR(
+    () => (userId ? `user-${userId}` : null),
+    () => fetchUserData(userId)
+  );
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    mutate("user", null);
+    console.log("🔓 [handleLogout] ログアウト実行");
+
+    mutate("supabase-session", null);
+    console.log("🗑️ [handleLogout] キャッシュ削除: supabase-session");
+
+    if (userId) {
+      mutate(`user-${userId}`, null);
+      console.log(`🗑️ [handleLogout] キャッシュ削除: user-${userId}`);
+    }
   };
 
   return {
