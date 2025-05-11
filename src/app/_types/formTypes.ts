@@ -1,4 +1,4 @@
-// フォームに関連する型をまとめたファイル
+import type { Session } from "@supabase/supabase-js";
 
 // ログインフォーム用のデータ型
 export type LoginFormData = {
@@ -12,6 +12,17 @@ export type SignUpFormData = {
   email: string; // ユーザーのメールアドレス
   password: string; // ユーザーのパスワード
   confirmPassword: string; // パスワード確認用（パスワードの再入力）
+};
+
+// Supabaseセッションとユーザー情報を表すアプリ用の型
+export type SessionUser = {
+  session: Session;
+  email: string;
+  id: string;
+  supabaseUserId: string;
+  nickname: string;
+  isAdmin: boolean;
+  token: string;
 };
 
 // 学習記録に関連する型
