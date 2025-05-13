@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Table,
   TableBody,
@@ -13,6 +13,7 @@ import { Edit, Trash } from "lucide-react"; // 編集と削除アイコンのイ
 import { LearningRecord } from "@/app/_types/formTypes"; // 学習記録の型をインポート
 import ActionButton from "@components/ActionButton"; // ActionButtonコンポーネントをインポート
 import { extractTime } from "@utils/timeUtils"; // timeUtils.tsからconvertToJSTをインポート
+import Pagination from "@ui/Pagination";
 
 // LearningRecordTablePropsの型定義
 interface LearningRecordTableProps {
@@ -26,6 +27,11 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
   handleDeleteRecord,
   handleEditRecord,
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+
+  const totalPages = Math.ceil(records.length / recordsPerPage);
+
   const formatDateToYMD = (date: Date) => {
     return date.toLocaleDateString("ja-JP", {
       year: "numeric",
@@ -34,24 +40,17 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
     });
   };
 
-  // recordsの変更を検知して開始時間でソートを行う
   const sortedRecords = [...records].sort((a, b) => {
-    // 現在の時刻を取得
     const now = new Date();
-
-    // aとbの開始時間をDate型に変換
-    const startTimeA = new Date(a.startTime).getTime();
-    const startTimeB = new Date(b.startTime).getTime();
-
-    // 現在の時刻との差を計算
-    const diffA = Math.abs(now.getTime() - startTimeA);
-    const diffB = Math.abs(now.getTime() - startTimeB);
-
-    // 現在に近い順に並べる
-    const result = diffA - diffB; // 小さいほど現在に近い
-
-    return result;
+    const diffA = Math.abs(now.getTime() - new Date(a.startTime).getTime());
+    const diffB = Math.abs(now.getTime() - new Date(b.startTime).getTime());
+    return diffA - diffB;
   });
+
+  const paginatedRecords = sortedRecords.slice(
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage
+  );
 
   return (
     <div className="rounded-md border">
@@ -67,54 +66,54 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
         </TableHeader>
 
         <TableBody>
-          {sortedRecords.map((record: LearningRecord) => {
-            // console.log("一覧表示map後record:", record); // デバッグ用
-            return (
-              <TableRow key={record.id}>
-                <TableCell className="font-medium">{record.title}</TableCell>
-                <TableCell>
-                  {record.date instanceof Date &&
-                  !isNaN(record.date.getTime()) ? (
-                    formatDateToYMD(record.date) // 日付部分だけ表示
-                  ) : (
-                    <span>無効な日付</span>
-                  )}
-                </TableCell>
-
-                <TableCell>
-                  {/* startTimeとendTimeを日本時間に変換して表示 */}
-                  {extractTime(record.startTime)} -{" "}
-                  {extractTime(record.endTime)}
-                  <div className="text-xs text-muted-foreground">
-                    {record.duration}時間
-                  </div>
-                </TableCell>
-
-                <TableCell className="hidden md:table-cell max-w-xs truncate">
-                  {record.content}
-                </TableCell>
-
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <ActionButton
-                      onClick={() => handleEditRecord(record)}
-                      icon={<Edit className="h-4 w-4" />}
-                      label="編集"
-                      variant="outline"
-                    />
-                    <ActionButton
-                      onClick={() => handleDeleteRecord(record.id)}
-                      icon={<Trash className="h-4 w-4" />}
-                      label="削除"
-                      variant="destructive"
-                    />
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
+          {paginatedRecords.map((record) => (
+            <TableRow key={record.id}>
+              <TableCell className="font-medium">{record.title}</TableCell>
+              <TableCell>
+                {record.date instanceof Date &&
+                !isNaN(record.date.getTime()) ? (
+                  formatDateToYMD(record.date)
+                ) : (
+                  <span>無効な日付</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {extractTime(record.startTime)} - {extractTime(record.endTime)}
+                <div className="text-xs text-muted-foreground">
+                  {record.duration}時間
+                </div>
+              </TableCell>
+              <TableCell className="hidden md:table-cell max-w-xs truncate">
+                {record.content}
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <ActionButton
+                    onClick={() => handleEditRecord(record)}
+                    icon={<Edit className="h-4 w-4" />}
+                    label="編集"
+                    variant="outline"
+                  />
+                  <ActionButton
+                    onClick={() => handleDeleteRecord(record.id)}
+                    icon={<Trash className="h-4 w-4" />}
+                    label="削除"
+                    variant="destructive"
+                  />
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
+
+      {/* ページネーション */}
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 };

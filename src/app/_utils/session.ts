@@ -2,101 +2,130 @@
 
 import useSWR, { mutate } from "swr";
 import { supabase } from "./supabase";
-import { preloadLearningRecords } from "@/app/_hooks/useLearningRecords"; // ✅ ログイン時の学習記録事前取得関数をインポート
+import type { SessionUser } from "../_types/formTypes";
+import type { Session } from "@supabase/supabase-js";
+import { preloadLearningRecords } from "@/app/_hooks/useLearningRecords";
 
-// ---------------------------------------------
-// 🔄 fetchUserData: ユーザー情報を取得する非同期関数
-// - Supabaseのセッションからユーザー情報を取得
-// - Userテーブルからニックネーム・ロール情報を取得
-// - ログイン時に学習記録をプリロードしてSWRにキャッシュ
-// ---------------------------------------------
-const fetchUserData = async () => {
+// ——————————————————————————
+// Supabase セッションを取得するヘルパー
+// ——————————————————————————
+async function getSupabaseSession(): Promise<Session | null> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+  console.log("✅ [getSupabaseSession] Session fetched:", session?.user?.id);
+  return session;
+}
 
-  // ✅ セッションが存在し、ユーザーがログインしている場合のみ処理を継続
-  if (session?.user) {
-    const user = session.user;
-
-    console.log("Session User ID:", user.id); // ✅ Supabase認証IDの確認ログ
-
-    // ✅ Userテーブルからnickname, roleId, supabaseUserId を取得
-    const { data, error } = await supabase
-      .from("User")
-      .select("nickname, roleId, supabaseUserId")
-      .eq("supabaseUserId", user.id);
-
-    if (error) {
-      console.error("ユーザー情報の取得エラー:", error.message);
-      return null;
-    }
-
-    if (!data || data.length === 0) {
-      console.error("ユーザーが見つかりませんでした");
-      return null;
-    }
-
-    const userData = data[0];
-
-    // ✅ Roleテーブルからロール名を取得
-    const { data: roleData, error: roleError } = await supabase
-      .from("Role")
-      .select("role_name")
-      .eq("id", userData.roleId)
-      .single();
-
-    if (roleError) {
-      console.error("役職情報の取得エラー:", roleError.message);
-      return null;
-    }
-
-    const isAdmin = roleData?.role_name === "admin";
-
-    // ✅ ログイン時に学習記録をSWRにプリロード
-    if (userData.supabaseUserId) {
-      preloadLearningRecords(userData.supabaseUserId).catch((err) =>
-        console.error("学習記録のプリロードに失敗:", err)
-      );
-    }
-
-    // ✅ ユーザー情報を整形して返す
-    return {
-      session,
-      email: user.email,
-      id: user.id,
-      supabaseUserId: userData?.supabaseUserId,
-      nickname: userData?.nickname || user.email, // ニックネームがない場合はemailを使用
-      isAdmin,
-      token: session.access_token,
-    };
+// ——————————————————————————
+// ユーザー情報を取得する fetcher
+// ※ userId が空文字 or マッチしない場合は null を返す
+// ——————————————————————————
+async function fetchUserData(userId: string): Promise<SessionUser | null> {
+  if (!userId) {
+    console.warn("⚠️ [fetchUserData] userId is empty");
+    return null;
   }
 
-  // ✅ セッションが存在しない場合（未ログイン）は null を返す
-  return null;
-};
+  const session = await getSupabaseSession();
+  if (!session?.user || session.user.id !== userId) {
+    console.warn("⚠️ [fetchUserData] Session missing or ID mismatch");
+    return null;
+  }
 
-// ---------------------------------------------
-// useSession: ユーザー情報取得用のカスタムフック
-// - fetchUserData をSWRで管理
-// - ログアウト処理も提供
-// ---------------------------------------------
-export const useSession = () => {
-  const { data, error } = useSWR("user", fetchUserData);
+  console.log("✅ [fetchUserData] Session user:", userId);
 
-  // 🔓 ログアウト処理（セッション削除＆キャッシュリセット）
+  // User テーブルから nickname, roleId, supabaseUserId を取得
+  const { data: users, error: userError } = await supabase
+    .from("User")
+    .select("nickname, roleId, supabaseUserId")
+    .eq("supabaseUserId", userId);
+
+  if (userError || !users || users.length === 0) {
+    console.error(
+      "❌ [fetchUserData] Failed to fetch User record:",
+      userError?.message
+    );
+    return null;
+  }
+  const userData = users[0];
+
+  // Role テーブルから role_name を取得
+  const { data: roles, error: roleError } = await supabase
+    .from("Role")
+    .select("role_name")
+    .eq("id", userData.roleId)
+    .single();
+
+  if (roleError) {
+    console.error(
+      "❌ [fetchUserData] Failed to fetch Role record:",
+      roleError.message
+    );
+    return null;
+  }
+
+  // 学習記録をプリロード
+  if (userData.supabaseUserId) {
+    console.log("⏳ [fetchUserData] Preloading learning records...");
+    preloadLearningRecords(userData.supabaseUserId).catch((err) =>
+      console.error("❌ [fetchUserData] Preload failed:", err)
+    );
+  }
+
+  console.log(`✅ [fetchUserData] Caching user-${userId}`);
+  return {
+    session,
+    email: session.user.email!,
+    id: session.user.id,
+    supabaseUserId: userData.supabaseUserId,
+    nickname: userData.nickname || session.user.email!,
+    isAdmin: roles.role_name === "admin",
+    token: session.access_token,
+  };
+}
+
+// ——————————————————————————
+// useSession フック
+// ——————————————————————————
+export function useSession() {
+  // 1) Supabase セッションを取得
+  const { data: session, error: sessionError } = useSWR<Session | null>(
+    "supabase-session",
+    getSupabaseSession
+  );
+
+  // 2) session から userId を取り出す (string | undefined)
+  const userId = session?.user?.id;
+
+  // 3) SWR キーと fetcher を準備 (キーが null のときは skip)
+  const key = userId ? `user-${userId}` : null;
+  const fetcher = () => fetchUserData(userId ?? "");
+
+  // 4) ユーザー情報をフェッチ
+  const { data: user, error } = useSWR<SessionUser | null>(key, fetcher);
+
+  // 5) ログアウト時にキャッシュをクリア
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    mutate("user", null);
+    console.log("🔓 [handleLogout] Signed out");
+
+    mutate("supabase-session", null);
+    console.log("🗑️ [handleLogout] Cleared cache: supabase-session");
+
+    if (userId) {
+      mutate(`user-${userId}`, null);
+      console.log(`🗑️ [handleLogout] Cleared cache: user-${userId}`);
+    }
   };
 
   return {
-    session: data?.session,
-    user: data,
-    token: data?.token,
-    supabaseUserId: data?.supabaseUserId,
-    isLoading: !data && !error,
-    isError: error,
+    session: session ?? null,
+    user: user ?? null,
+    token: user?.token ?? null,
+    supabaseUserId: user?.supabaseUserId ?? null,
+    isLoading: !session && !sessionError,
+    isError: error ?? sessionError,
     handleLogout,
   };
-};
+}
