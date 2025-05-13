@@ -80,7 +80,7 @@ const LearningRecordTable: React.FC<LearningRecordTableProps> = ({
               <TableCell>
                 {extractTime(record.startTime)} - {extractTime(record.endTime)}
                 <div className="text-xs text-muted-foreground">
-                  {record.duration}時間
+                  {record.duration.toFixed(1)}時間
                 </div>
               </TableCell>
               <TableCell className="hidden md:table-cell max-w-xs truncate">
