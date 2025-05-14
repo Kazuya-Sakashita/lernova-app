@@ -20,7 +20,6 @@ export default function LoginPage() {
   const [emailSent, setEmailSent] = useState<boolean>(false); // 確認メール送信済み状態
   const [rememberMe, setRememberMe] = useState<boolean>(false); // ✅ ログイン保持の選択状態
   const router = useRouter();
-  const { refreshLearningRecords } = useLearningRecords();
 
   // react-hook-form によるフォーム状態管理
   const {
