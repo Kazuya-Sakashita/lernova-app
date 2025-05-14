@@ -102,11 +102,7 @@ export default function LoginPage() {
     const user = await handleLogin(data.email, data.password);
 
     if (user) {
-      // ✅ ログイン成功時：学習記録プリロード
-      await refreshLearningRecords(user.id);
-      console.log("✅ 学習記録の取得とキャッシュ成功");
-
-      // ✅ ダッシュボードへリダイレクト
+      // ✅ 学習記録はセッション取得時にプリロード済み
       router.push("/user/dashboard");
     }
   };
