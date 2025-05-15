@@ -10,7 +10,6 @@ import { Input } from "@ui/input";
 import Link from "next/link";
 import { LoginFormData } from "@/app/_types/formTypes";
 import AppLogoLink from "../_components/AppLogoLink";
-import { useLearningRecords } from "@/app/_hooks/useLearningRecords";
 
 export default function LoginPage() {
   // -------------------------------
@@ -20,7 +19,6 @@ export default function LoginPage() {
   const [emailSent, setEmailSent] = useState<boolean>(false); // 確認メール送信済み状態
   const [rememberMe, setRememberMe] = useState<boolean>(false); // ✅ ログイン保持の選択状態
   const router = useRouter();
-  const { refreshLearningRecords } = useLearningRecords();
 
   // react-hook-form によるフォーム状態管理
   const {
@@ -108,10 +106,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex justify-center items-center px-4">
+    <div className="min-h-screen flex justify-center">
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="w-full max-w-md space-y-6 bg-white p-8 rounded shadow"
+        className="w-full max-w-md space-y-6"
       >
         {/* -------------------- */}
         {/* ロゴ・タイトルセクション */}
