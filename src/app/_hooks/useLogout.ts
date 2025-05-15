@@ -14,9 +14,13 @@ export const useLogout = () => {
       console.log("🔓 ログアウトしました");
 
       // ✅ 明示的にキャッシュキーを個別にクリアしつつログ出力
-      mutate("user", null);
+      mutate("supabase-session", null); // セッションのキャッシュ削除
+      console.log("🗑️ キャッシュ削除: supabase-session");
+
+      mutate("user", null); // ユーザー情報のキャッシュ削除
       console.log("🗑️ キャッシュ削除: user");
 
+      // 必要に応じて他のキャッシュをクリア
       mutate("/api/dashboard", null);
       console.log("🗑️ キャッシュ削除: /api/dashboard");
 
@@ -26,9 +30,10 @@ export const useLogout = () => {
       mutate("/api/learning-record", null);
       console.log("🗑️ キャッシュ削除: /api/learning-record");
 
-      // 必要に応じて他のキーも追加
+      // 必要なキャッシュがあれば追加
       // mutate("your-key", null); console.log("🗑️ キャッシュ削除: your-key");
 
+      // ログインページにリダイレクト
       router.push("/login");
     }
   };
