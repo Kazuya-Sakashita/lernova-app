@@ -6,9 +6,7 @@ import type { SessionUser } from "../_types/formTypes";
 import type { Session } from "@supabase/supabase-js";
 import { preloadLearningRecords } from "@/app/_hooks/useLearningRecords";
 
-// ——————————————————————————
-// Supabase セッションを取得するヘルパー
-// ——————————————————————————
+// Supabase セッション取得
 async function getSupabaseSession(): Promise<Session | null> {
   const {
     data: { session },
@@ -17,10 +15,7 @@ async function getSupabaseSession(): Promise<Session | null> {
   return session;
 }
 
-// ——————————————————————————
-// ユーザー情報を取得する fetcher
-// ※ userId が空文字 or マッチしない場合は null を返す
-// ——————————————————————————
+// ユーザー情報取得（+ 学習記録のプリロード）
 async function fetchUserData(userId: string): Promise<SessionUser | null> {
   if (!userId) {
     console.warn("⚠️ [fetchUserData] userId is empty");
@@ -35,7 +30,6 @@ async function fetchUserData(userId: string): Promise<SessionUser | null> {
 
   console.log("✅ [fetchUserData] Session user:", userId);
 
-  // User テーブルから nickname, roleId, supabaseUserId を取得
   const { data: users, error: userError } = await supabase
     .from("User")
     .select("nickname, roleId, supabaseUserId")
@@ -48,9 +42,9 @@ async function fetchUserData(userId: string): Promise<SessionUser | null> {
     );
     return null;
   }
+
   const userData = users[0];
 
-  // Role テーブルから role_name を取得
   const { data: roles, error: roleError } = await supabase
     .from("Role")
     .select("role_name")
@@ -65,7 +59,6 @@ async function fetchUserData(userId: string): Promise<SessionUser | null> {
     return null;
   }
 
-  // 学習記録をプリロード
   if (userData.supabaseUserId) {
     console.log("⏳ [fetchUserData] Preloading learning records...");
     preloadLearningRecords(userData.supabaseUserId).catch((err) =>
@@ -85,37 +78,38 @@ async function fetchUserData(userId: string): Promise<SessionUser | null> {
   };
 }
 
-// ——————————————————————————
 // useSession フック
-// ——————————————————————————
 export function useSession() {
-  // 1) Supabase セッションを取得
   const { data: session, error: sessionError } = useSWR<Session | null>(
     "supabase-session",
     getSupabaseSession
   );
 
-  // 2) session から userId を取り出す (string | undefined)
   const userId = session?.user?.id;
-
-  // 3) SWR キーと fetcher を準備 (キーが null のときは skip)
   const key = userId ? `user-${userId}` : null;
   const fetcher = () => fetchUserData(userId ?? "");
 
-  // 4) ユーザー情報をフェッチ
   const { data: user, error } = useSWR<SessionUser | null>(key, fetcher);
 
-  // 5) ログアウト時にキャッシュをクリア
+  // 🔒 ログアウト処理（セッション削除 + SWRキャッシュクリア + ストレージリセット）
   const handleLogout = async () => {
     await supabase.auth.signOut();
     console.log("🔓 [handleLogout] Signed out");
 
+    // SWRキャッシュクリア
     mutate("supabase-session", null);
     console.log("🗑️ [handleLogout] Cleared cache: supabase-session");
 
     if (userId) {
       mutate(`user-${userId}`, null);
       console.log(`🗑️ [handleLogout] Cleared cache: user-${userId}`);
+    }
+
+    // ログイン状態保存情報を削除（localStorage / sessionStorage 両方）
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("persistLogin");
+      sessionStorage.removeItem("persistLogin");
+      console.log("🧹 [handleLogout] Removed login persistence flags");
     }
   };
 
