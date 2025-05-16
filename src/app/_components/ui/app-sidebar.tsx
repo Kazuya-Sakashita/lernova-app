@@ -187,17 +187,25 @@ export function AppSidebar() {
         label: "進捗管理（管理者用）",
       },
     ],
+
+    // ログインしていないユーザー向けのメニュー
     loggedOut: [
-      { href: "/", icon: Home, label: "ホーム" },
-      { href: "/learning-support", icon: BookOpen, label: "学習サポート概要" },
+      { href: "/", icon: Home, label: "ホーム", manualNav: true },
+      {
+        href: "/learning-support",
+        icon: BookOpen,
+        label: "学習サポート概要",
+        // manualNav: true,
+      },
       {
         href: "/blog/success-stories",
         icon: Award,
         label: "成功事例",
         isUnderDevelopment: true,
+        // manualNav: true,
       },
-      { href: "/login", icon: LogOut, label: "ログイン" },
-      { href: "/signup", icon: User, label: "アカウント作成" },
+      { href: "/login", icon: LogOut, label: "ログイン", manualNav: true },
+      { href: "/signup", icon: User, label: "アカウント作成", manualNav: true },
     ],
   };
 
