@@ -67,6 +67,15 @@ export function AppHeader() {
           >
             ホーム
           </Link>
+          <Button variant="ghost" asChild>
+            <Link
+              href="https://forms.gle/VswqnpPY7FrJ5A146"
+              className="flex items-center gap-2"
+            >
+              <MessageSquare className="w-4 h-4" />
+              フィードバック
+            </Link>
+          </Button>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -139,15 +148,6 @@ export function AppHeader() {
             </DropdownMenu.Root>
           ) : (
             <>
-              <Button variant="ghost" asChild>
-                <Link
-                  href="https://forms.gle/VswqnpPY7FrJ5A146"
-                  className="flex items-center gap-2"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  フィードバック
-                </Link>
-              </Button>
               <Button variant="ghost" asChild>
                 <Link href="/login">ログイン</Link>
               </Button>
