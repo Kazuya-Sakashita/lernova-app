@@ -34,6 +34,19 @@ const LearningHistory = () => {
     }
   };
 
+  /**
+   * 以下のように書けます。
+  const { data: heatmapData, mutate: mutateHeatmap } = useSWR(
+    userId ? `/api/user/heatmap?supabaseUserId=${userId}` : null,
+    fetcher
+  );
+
+  // ✅ ヒートマップ再取得
+  const refreshHeatmap = () => {
+    if (userId) mutateHeatmap();
+  };
+   */
+
   // ✅ RawRecord → LearningRecord に変換
   const transformedRecords: LearningRecord[] = (rawRecords ?? []).map((r) => ({
     id: r.id,

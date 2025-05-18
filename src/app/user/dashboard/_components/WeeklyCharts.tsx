@@ -8,6 +8,7 @@ import { CategoryChart } from "@/app/_components/category-chart";
 // このファイル内でのみ使用するローカル型定義
 // ================================
 
+// LearningProgressChartに依存する型なので、LearningProgressChartで定義したものをimportする形の方が肩の一致を保証できて良さそうです。
 // 棒グラフ（週間学習時間）用のデータ型
 interface BarChartData {
   labels: string[]; // 曜日などのラベル

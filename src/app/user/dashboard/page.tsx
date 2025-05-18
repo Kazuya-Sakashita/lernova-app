@@ -29,6 +29,9 @@ export default function Home() {
   const { user } = useSession();
   const userId = user?.supabaseUserId ?? "";
 
+  // tokenでなく、エンドポイントにsupabaseUserIdを渡すと、認証されていなくても、supabaseUserIdを知っていれば他のユーザーの情報も見れるようになりますが、それは意図通りでしょうか、？
+  // 毎回useSWRとfetcherを呼ぶのでなく、useWeeklyLearningDurationといったhookを作成し、
+  // const const { data: weeklyDurationData } = useWeeklyLearningDuration(userId) と呼び出せると良さそうです。
   const { data: weeklyDurationData } = useSWR(
     userId
       ? `/api/user/weekly-learning-duration?supabaseUserId=${userId}`

@@ -13,6 +13,7 @@ export const PUT = async (
 ) => {
   const { learningRecordId } = params;
 
+  // learningRecordIdがない場合はそもそもこのroute.tsが呼ばれていないので、この処理は不要かなと思います。
   if (!learningRecordId) {
     return NextResponse.json(
       { message: "学習記録IDが不足しています" },
@@ -51,6 +52,7 @@ export const PUT = async (
       );
     }
 
+    // 56~70までの処理はどこかに共通かさせて、const { data, error } = await getCurrentUser(request)のように使えるとスッキリしそうです。
     const token = request.headers.get("authorization")?.split(" ")[1];
     if (!token) {
       return NextResponse.json(
@@ -76,6 +78,7 @@ export const PUT = async (
     }
 
     const updatedRecord = await prisma.learningRecord.update({
+      // 認可ありのAPIでレコードの取得、更新、削除をする場合は、userもwhere句で絞り込むようにしましょう。そうしないと、認証さえされていれば他人のレコードも操作できてしまうので。
       where: { id: recordId },
       data: {
         title,
