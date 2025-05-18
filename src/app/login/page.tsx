@@ -151,6 +151,7 @@ export default function LoginPage() {
                 },
               })}
               className={`h-10 ${errors.email ? "border-red-500" : ""}`}
+              // 入力蘭も、送信中は基本disabledにしておくと良さそうです。
             />
             {errors.email && (
               <p className="text-sm text-red-500">{errors.email.message}</p>
