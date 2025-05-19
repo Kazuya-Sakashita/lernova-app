@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@utils/prisma"; // Prismaクライアントをインポート
-import { supabase } from "@utils/supabase"; // Supabaseクライアントをインポート
+import { prisma } from "@utils/prisma";
 import {
   recalculateStreakAfterLearningChange,
   recalculateBestStreak,
-} from "@/app/_utils/learningStreak"; // 継続日数再計算の共通関数をインポート
+} from "@utils/learningStreak";
+import { getCurrentUser } from "@utils/auth";
+import { parseLearningRecordId } from "@utils/idValidators";
 
 // PUT リクエスト: 学習記録の更新
 export const PUT = async (
@@ -12,13 +13,6 @@ export const PUT = async (
   { params }: { params: { learningRecordId: string } }
 ) => {
   const { learningRecordId } = params;
-
-  if (!learningRecordId) {
-    return NextResponse.json(
-      { message: "学習記録IDが不足しています" },
-      { status: 400 }
-    );
-  }
 
   try {
     const body = await request.json();
@@ -51,32 +45,22 @@ export const PUT = async (
       );
     }
 
-    const token = request.headers.get("authorization")?.split(" ")[1];
-    if (!token) {
-      return NextResponse.json(
-        { message: "認証エラー: トークンが不足しています" },
-        { status: 401 }
-      );
-    }
-
-    const { data, error } = await supabase.auth.getUser(token);
-    if (error || !data) {
+    const { data, error } = await getCurrentUser(request);
+    if (error || !data?.user) {
       return NextResponse.json(
         { message: "認証エラー: ユーザーが見つかりません" },
         { status: 401 }
       );
     }
 
-    const recordId = Number(learningRecordId);
-    if (isNaN(recordId)) {
-      return NextResponse.json(
-        { message: "無効な学習記録IDです" },
-        { status: 400 }
-      );
+    const { value: recordId, error: idError } =
+      parseLearningRecordId(learningRecordId);
+    if (!recordId) {
+      return NextResponse.json({ message: idError }, { status: 400 });
     }
 
     const updatedRecord = await prisma.learningRecord.update({
-      where: { id: recordId },
+      where: { id: recordId, supabaseUserId },
       data: {
         title,
         learning_date: date,
@@ -117,24 +101,9 @@ export const DELETE = async (
 ) => {
   const { learningRecordId } = params;
 
-  if (!learningRecordId) {
-    return NextResponse.json(
-      { message: "学習記録IDが不足しています" },
-      { status: 400 }
-    );
-  }
-
   try {
-    const token = request.headers.get("authorization")?.split(" ")[1];
-    if (!token) {
-      return NextResponse.json(
-        { message: "認証エラー: トークンが不足しています" },
-        { status: 401 }
-      );
-    }
-
-    const { data, error } = await supabase.auth.getUser(token);
-    if (error || !data) {
+    const { data, error } = await getCurrentUser(request);
+    if (error || !data?.user) {
       return NextResponse.json(
         { message: "認証エラー: ユーザーが見つかりません" },
         { status: 401 }
@@ -149,12 +118,10 @@ export const DELETE = async (
       );
     }
 
-    const recordId = Number(learningRecordId);
-    if (isNaN(recordId)) {
-      return NextResponse.json(
-        { message: "無効な学習記録IDです" },
-        { status: 400 }
-      );
+    const { value: recordId, error: idError } =
+      parseLearningRecordId(learningRecordId);
+    if (!recordId) {
+      return NextResponse.json({ message: idError }, { status: 400 });
     }
 
     const deletedRecord = await prisma.learningRecord.delete({
