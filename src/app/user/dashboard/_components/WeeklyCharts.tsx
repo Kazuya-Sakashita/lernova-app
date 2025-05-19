@@ -3,31 +3,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@ui/card";
 import { LearningProgressChart } from "@/app/_components/learning-progress-chart";
 import { CategoryChart } from "@/app/_components/category-chart";
+import type { BarChartData, PieChartData } from "@/app/_types/chartTypes";
 
 // ================================
-// このファイル内でのみ使用するローカル型定義
+// Props 型定義
 // ================================
 
-// 棒グラフ（週間学習時間）用のデータ型
-interface BarChartData {
-  labels: string[]; // 曜日などのラベル
-  datasets: {
-    label: string; // データセットのラベル（例: "学習時間"）
-    data: number[]; // 各曜日の学習時間
-    backgroundColor: string; // 棒グラフの色
-  }[];
-}
-
-// 円グラフ（カテゴリ別）用のデータ型
-interface PieChartData {
-  labels: string[]; // カテゴリ名のラベル（例: "プログラミング", "数学"）
-  datasets: {
-    data: number[]; // 各カテゴリの学習時間
-    backgroundColor: string[]; // 各カテゴリの円グラフ色
-  }[];
-}
-
-// Props 型：グラフ2種のデータを受け取る
+/**
+ * @property chartData - 週間学習時間の棒グラフに使用するデータ
+ * @property categoryData - カテゴリ別学習時間の円グラフに使用するデータ
+ */
 interface Props {
   chartData: BarChartData;
   categoryData: PieChartData;
@@ -37,9 +22,13 @@ interface Props {
 // 表示コンポーネント：WeeklyCharts
 // ================================
 
+/**
+ * ユーザーの週間学習データを棒グラフと円グラフで視覚化するコンポーネント
+ */
 const WeeklyCharts = ({ chartData, categoryData }: Props) => (
   console.log("WeeklyCharts", { chartData, categoryData }),
   (
+    // Gridレイアウト：左4列に棒グラフ、右3列に円グラフを表示
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
       {/* 左：棒グラフ（週間学習時間） */}
       <Card className="col-span-4">
@@ -48,7 +37,8 @@ const WeeklyCharts = ({ chartData, categoryData }: Props) => (
         </CardHeader>
         <CardContent>
           <LearningProgressChart
-            data={{ ...chartData, labels: chartData.labels! }} // labels が undefined ではない前提で明示
+            // `labels!` はundefinedでない前提の明示。型安全を保ちたい場合は別途バリデーションが理想
+            data={{ ...chartData, labels: chartData.labels! }}
           />
         </CardContent>
       </Card>
@@ -60,7 +50,7 @@ const WeeklyCharts = ({ chartData, categoryData }: Props) => (
         </CardHeader>
         <CardContent>
           <CategoryChart
-            data={{ ...categoryData, labels: categoryData.labels! }} // 同様に labels 明示
+            data={{ ...categoryData, labels: categoryData.labels! }}
           />
         </CardContent>
       </Card>
