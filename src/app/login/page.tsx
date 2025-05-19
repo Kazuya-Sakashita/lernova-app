@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [emailSent, setEmailSent] = useState<boolean>(false); // 確認メール送信済み状態
   const [rememberMe, setRememberMe] = useState<boolean>(false); // ✅ ログイン保持の選択状態
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false); // フォーム送信中の状態
 
   // react-hook-form によるフォーム状態管理
   const {
@@ -97,7 +98,10 @@ export default function LoginPage() {
   // -------------------------------
   const onSubmit = async (data: LoginFormData) => {
     setError(null);
+    setIsSubmitting(true); // フォーム送信中の状態を設定
     const user = await handleLogin(data.email, data.password);
+
+    setIsSubmitting(false); // フォーム送信後の状態をリセット
 
     if (user) {
       // ✅ 学習記録はセッション取得時にプリロード済み
@@ -150,6 +154,7 @@ export default function LoginPage() {
                   message: "無効なメールアドレスです",
                 },
               })}
+              disabled={isSubmitting}
               className={`h-10 ${errors.email ? "border-red-500" : ""}`}
             />
             {errors.email && (
@@ -171,6 +176,7 @@ export default function LoginPage() {
                   message: "パスワードは8文字以上必要です",
                 },
               })}
+              disabled={isSubmitting}
               className={`h-10 ${errors.password ? "border-red-500" : ""}`}
             />
             {errors.password && (
@@ -185,6 +191,7 @@ export default function LoginPage() {
               id="rememberMe"
               checked={rememberMe}
               onChange={() => setRememberMe((prev) => !prev)}
+              disabled={isSubmitting}
               className="accent-pink-500"
             />
             <label htmlFor="rememberMe" className="text-sm text-gray-700">
@@ -220,9 +227,10 @@ export default function LoginPage() {
         {/* -------------------- */}
         <Button
           type="submit"
+          disabled={isSubmitting}
           className="w-full bg-pink-500 text-white hover:bg-pink-600"
         >
-          ログイン
+          {isSubmitting ? "ログイン中..." : "ログイン"}
         </Button>
       </form>
     </div>
