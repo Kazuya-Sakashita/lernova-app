@@ -1,6 +1,5 @@
 "use client";
 
-import useSWR from "swr";
 import { useSession } from "@utils/session";
 import DashboardHeader from "@/app/user/dashboard/_components/DashboardHeader";
 import DashboardStats from "@/app/user/dashboard/_components/DashboardStats";
@@ -8,7 +7,12 @@ import WeeklyCharts from "@/app/user/dashboard/_components/WeeklyCharts";
 import HeatmapSection from "@/app/user/dashboard/_components/HeatmapSection";
 import RecentRecords from "@/app/user/dashboard/_components/RecentRecords";
 import MonthlyGoals from "@/app/user/dashboard/_components/MonthlyGoals";
-import { fetcher } from "@utils/fetcher";
+import { useWeeklyLearningDuration } from "./_hooks/useWeeklyLearningDuration";
+import { useWeeklyChart } from "./_hooks/useWeeklyChart";
+import { useCategoryDistribution } from "./_hooks/useCategoryDistribution";
+import { useHeatmapData } from "./_hooks/useHeatmapData";
+import { useRecentRecords } from "./_hooks/useRecentRecords";
+import { useLearningStreak } from "./_hooks/useLearningStreak";
 
 const generateBackgroundColors = (count: number) => {
   const baseColors = [
@@ -29,39 +33,12 @@ export default function Home() {
   const { user } = useSession();
   const userId = user?.supabaseUserId ?? "";
 
-  const { data: weeklyDurationData } = useSWR(
-    userId
-      ? `/api/user/weekly-learning-duration?supabaseUserId=${userId}`
-      : null,
-    fetcher
-  );
-
-  const { data: weeklyChart } = useSWR(
-    userId ? `/api/user/weekly-chart-data?supabaseUserId=${userId}` : null,
-    fetcher
-  );
-
-  const { data: categoryRaw } = useSWR(
-    userId ? `/api/user/category-distribution?supabaseUserId=${userId}` : null,
-    fetcher
-  );
-
-  const { data: heatmapData } = useSWR(
-    userId ? `/api/user/heatmap?supabaseUserId=${userId}` : null,
-    fetcher
-  );
-
-  const { data: recentRecords } = useSWR(
-    userId
-      ? `/api/user/recent-learning-records?supabaseUserId=${userId}`
-      : null,
-    fetcher
-  );
-
-  const { data: streakData } = useSWR(
-    userId ? `/api/user/learning-streak?supabaseUserId=${userId}` : null,
-    fetcher
-  );
+  const { weeklyDurationData } = useWeeklyLearningDuration(userId);
+  const { weeklyChart } = useWeeklyChart(userId);
+  const { categoryData } = useCategoryDistribution(userId);
+  const { heatmapData } = useHeatmapData(userId);
+  const { recentRecords } = useRecentRecords(userId);
+  const { streakData } = useLearningStreak(userId);
 
   const weeklyDuration = weeklyDurationData?.weeklyDuration ?? 0;
   const lastWeekDuration = weeklyDurationData?.lastWeekDuration ?? 0;
@@ -93,14 +70,14 @@ export default function Home() {
         ],
       };
 
-  const categoryData = categoryRaw
+  const categoryChartData = categoryData
     ? {
-        labels: categoryRaw.labels,
+        labels: categoryData.labels,
         datasets: [
           {
-            data: categoryRaw.data,
+            data: categoryData.data,
             backgroundColor: generateBackgroundColors(
-              categoryRaw.labels.length
+              categoryData.labels.length
             ),
           },
         ],
@@ -124,7 +101,7 @@ export default function Home() {
         learningStreak={learningStreak}
         bestStreak={bestStreak}
       />
-      <WeeklyCharts chartData={chartData} categoryData={categoryData} />
+      <WeeklyCharts chartData={chartData} categoryData={categoryChartData} />
       <HeatmapSection data={heatmapData ?? []} />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <RecentRecords records={recentRecords ?? []} />
