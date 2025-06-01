@@ -121,7 +121,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex justify-center items-center p-4">
+    <div className="min-h-screen flex justify-center p-4">
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="w-full max-w-md space-y-6"
