@@ -83,13 +83,12 @@ const MenuItem = ({
 );
 
 export function AppSidebar() {
-  const { user, isLoading, isError } = useSession();
+  const { user, isAdmin, isLoading, isError } = useSession();
+  console.log("AppSidebar isAdmin:", isAdmin);
+  const isLoggedIn = !!user?.email;
   const { handleLogout } = useLogout();
   const pathname = usePathname();
   const router = useRouter();
-
-  const isLoggedIn = !!user?.email;
-  const isAdmin = user?.isAdmin ?? false;
 
   const isActive = (path: string) =>
     pathname === path || pathname.startsWith(path);
