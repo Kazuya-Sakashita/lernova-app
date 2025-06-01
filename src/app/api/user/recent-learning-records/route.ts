@@ -1,71 +1,78 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
-// Prisma クライアントのインスタンスを作成
 const prisma = new PrismaClient();
 
-// このファイル専用の学習記録型を定義
+// 学習記録のレスポンス用型定義
 type RecentLearningRecord = {
-  id: number; // 学習記録のID
-  title: string; // 学習記録のタイトル
-  content: string; // 学習内容
-  duration: number; // 学習時間
-  learning_date: Date; // 学習日
-  daysAgo: string; // 何日前かの表示
-};
-
-type RecordFromPrisma = {
   id: number;
   title: string;
   content: string;
   duration: number;
   learning_date: Date;
+  daysAgo: string; // "3日前" のような表現
 };
 
-export async function GET(req: NextRequest) {
-  // クエリパラメータから supabaseUserId を取得
-  const supabaseUserId = req.nextUrl.searchParams.get("supabaseUserId");
+// -----------------------------
+// ✅ GET: 最近の学習記録（最大7件）
+// -----------------------------
+export async function GET() {
+  // ✅ セッションからユーザーを取得
+  const supabase = createRouteHandlerClient({ cookies });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // supabaseUserId が指定されていない場合はエラーレスポンスを返す
-  if (!supabaseUserId) {
-    return NextResponse.json({ error: "No user ID provided" }, { status: 400 });
+  // 未認証ユーザーの場合はエラーレスポンスを返す
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 該当ユーザーの学習記録を取得（最新順に最大7件）
-  const records = await prisma.learningRecord.findMany({
-    where: {
-      supabaseUserId,
-    },
-    orderBy: {
-      learning_date: "desc",
-    },
-    take: 7,
-    select: {
-      id: true,
-      title: true,
-      content: true,
-      duration: true,
-      learning_date: true,
-    },
-  });
+  const supabaseUserId = user.id;
 
-  // 学習記録を整形（型キャストを追加）
-  const formatted: RecentLearningRecord[] = records.map(
-    (record: RecordFromPrisma) => ({
-      id: record.id as number, // 型キャスト
+  try {
+    // ✅ 該当ユーザーの学習記録を最新順で最大7件取得
+    const records = await prisma.learningRecord.findMany({
+      where: {
+        supabaseUserId,
+      },
+      orderBy: {
+        learning_date: "desc",
+      },
+      take: 7,
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        duration: true,
+        learning_date: true,
+      },
+    });
+
+    // ✅ 日付を「〜前」の形式に整形したレスポンスを作成
+    const formatted: RecentLearningRecord[] = records.map((record) => ({
+      id: record.id,
       title: record.title,
       content: record.content,
       duration: record.duration,
-      learning_date: record.learning_date as Date, // 型キャスト
+      learning_date: record.learning_date,
       daysAgo: formatDistanceToNow(record.learning_date, {
-        addSuffix: true, // 例: "3日前"
+        addSuffix: true,
         locale: ja,
       }),
-    })
-  );
+    }));
 
-  // 整形したデータを JSON として返す
-  return NextResponse.json(formatted);
+    // ✅ 整形したデータをJSONとして返却
+    return NextResponse.json(formatted);
+  } catch (error) {
+    console.error("❌ 学習記録の取得に失敗:", error);
+    return NextResponse.json(
+      { error: "データの取得に失敗しました" },
+      { status: 500 }
+    );
+  }
 }

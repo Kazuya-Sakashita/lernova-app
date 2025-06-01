@@ -3,9 +3,13 @@
 import useSWR from "swr";
 import { fetcher } from "@/app/_utils/fetcher";
 
-export function useLearningStreak(userId: string | undefined) {
+// -----------------------------
+// ✅ 学習継続日数（連続学習記録）の取得フック
+// -----------------------------
+// セッションベースで supabaseUserId を取得するAPI前提なので userId 引数は不要
+export function useLearningStreak() {
   const { data, error, isLoading } = useSWR(
-    userId ? `/api/user/learning-streak?supabaseUserId=${userId}` : null,
+    "/api/user/learning-streak", // クエリなしで固定パス
     fetcher
   );
 

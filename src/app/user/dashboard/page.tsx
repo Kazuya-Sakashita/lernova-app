@@ -31,14 +31,16 @@ const generateBackgroundColors = (count: number) => {
 
 export default function Home() {
   const { user } = useSession();
-  const userId = user?.supabaseUserId ?? "";
 
-  const { weeklyDurationData } = useWeeklyLearningDuration(userId);
-  const { weeklyChart } = useWeeklyChart(userId);
-  const { categoryData } = useCategoryDistribution(userId);
-  const { heatmapData } = useHeatmapData(userId);
-  const { recentRecords } = useRecentRecords(userId);
-  const { streakData } = useLearningStreak(userId);
+  const { weeklyDurationData } = useWeeklyLearningDuration();
+  const { weeklyChart } = useWeeklyChart();
+  const { categoryData } = useCategoryDistribution();
+  const { heatmapData } = useHeatmapData();
+  const { recentRecords } = useRecentRecords();
+  const { streakData } = useLearningStreak();
+
+  // フェッチデータ確認
+  console.log("useCategoryDistribution:", useCategoryDistribution);
 
   const weeklyDuration = weeklyDurationData?.weeklyDuration ?? 0;
   const lastWeekDuration = weeklyDurationData?.lastWeekDuration ?? 0;

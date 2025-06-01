@@ -3,9 +3,13 @@
 import useSWR from "swr";
 import { fetcher } from "@/app/_utils/fetcher";
 
-export function useHeatmapData(userId: string | undefined) {
+// -----------------------------
+// ✅ 学習ヒートマップデータを取得するカスタムフック
+// -----------------------------
+// API側でセッションから supabaseUserId を取得するため、引数は不要
+export function useHeatmapData() {
   const { data, error, isLoading } = useSWR(
-    userId ? `/api/user/heatmap?supabaseUserId=${userId}` : null,
+    "/api/user/heatmap", // ✅ 固定のキャッシュキー
     fetcher
   );
 

@@ -1,34 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_utils/prisma";
-import { authenticateUser } from "@/app/_utils/authenticateUser";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 import { subMonths } from "date-fns";
 import { Prisma } from "@prisma/client";
 
 // -----------------------------
-// POST: 学習記録の新規作成
+// ✅ POST: 学習記録の新規作成
 // -----------------------------
 export async function POST(req: NextRequest) {
-  // ✅ 認証チェック（失敗した場合はエラーレスポンス）
-  const authError = await authenticateUser(req);
-  if (authError) return authError;
-
   try {
+    // ✅ Supabaseクライアントを初期化して、クッキーからセッション取得
+    const supabase = createRouteHandlerClient({ cookies });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { message: "未認証のリクエストです" },
+        { status: 401 }
+      );
+    }
+
+    const supabaseUserId = user.id;
+
     // ✅ リクエストボディのパース
     const body = await req.json();
-    const {
-      supabaseUserId,
-      categoryId,
-      title,
-      date,
-      startTime,
-      endTime,
-      duration,
-      content,
-    } = body;
+    const { categoryId, title, date, startTime, endTime, duration, content } =
+      body;
 
     // ✅ 必須フィールドのバリデーション
     if (
-      !supabaseUserId ||
       !categoryId ||
       !title ||
       !date ||
@@ -68,24 +71,29 @@ export async function POST(req: NextRequest) {
 }
 
 // -----------------------------
-// GET: 学習記録の取得
-// （例: ?supabaseUserId=xxx&period=3months）
+// ✅ GET: 学習記録の取得（例: ?period=3months）
 // -----------------------------
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const supabaseUserId = searchParams.get("supabaseUserId");
     const period = searchParams.get("period"); // 期間指定（例: "3months"）
 
-    // ✅ ユーザーIDの存在チェック
-    if (!supabaseUserId) {
+    // ✅ Supabaseクライアントからセッションを取得
+    const supabase = createRouteHandlerClient({ cookies });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
       return NextResponse.json(
-        { message: "ユーザーIDが指定されていません" },
-        { status: 400 }
+        { message: "未認証のリクエストです" },
+        { status: 401 }
       );
     }
 
-    // ✅ フィルター条件の構築
+    const supabaseUserId = user.id;
+
+    // ✅ フィルター条件の構築（期間あり/なし）
     const today = new Date();
     const where: Prisma.LearningRecordWhereInput = {
       supabaseUserId,

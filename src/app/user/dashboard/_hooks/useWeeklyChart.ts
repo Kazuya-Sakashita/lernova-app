@@ -3,9 +3,13 @@
 import useSWR from "swr";
 import { fetcher } from "@/app/_utils/fetcher";
 
-export function useWeeklyChart(userId: string | undefined) {
+// -----------------------------
+// ✅ SWRによる週間学習チャート取得フック
+// -----------------------------
+// サーバー側でセッションから supabaseUserId を取得する前提
+export function useWeeklyChart() {
   const { data, error, isLoading } = useSWR(
-    userId ? `/api/user/weekly-chart-data?supabaseUserId=${userId}` : null,
+    "/api/user/weekly-chart-data", // ✅ クエリ不要、固定キーに
     fetcher
   );
 

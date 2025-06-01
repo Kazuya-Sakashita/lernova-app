@@ -1,49 +1,69 @@
+// src/app/api/user/route.ts
+
 import { prisma } from "@/app/_utils/prisma";
 
+// -----------------------------
+// ✅ POST: Supabaseユーザー情報に基づきアプリ用ユーザーを登録
+// -----------------------------
 export async function POST(request: Request) {
   try {
-    // リクエストボディから必要な情報を取得
+    // ✅ リクエストボディを取得してJSONとしてパース
     const { nickname, supabaseUserId } = await request.json();
 
-    // ✅ トランザクションで一連の処理をラップ（すべて成功するか、すべてロールバック）
+    // ✅ 必須項目が不足している場合は400 Bad Requestを返す
+    if (!nickname || !supabaseUserId) {
+      return new Response(
+        JSON.stringify({
+          message: "nickname または supabaseUserId が不足しています",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // ✅ トランザクションでアプリユーザーの登録処理を実行
     const result = await prisma.$transaction(async (tx) => {
-      // 1. すでに同じ supabaseUserId を持つユーザーが存在するか確認
+      // すでに supabaseUserId に対応するユーザーが存在するか確認
       const existingUser = await tx.user.findUnique({
         where: { supabaseUserId },
       });
 
-      // 2. 存在すれば例外を投げてトランザクションを中断（ロールバックされる）
       if (existingUser) {
+        // 既存ユーザーがいた場合はエラーを投げてロールバック
         throw new Error("ユーザーはすでに存在します。");
       }
 
-      // 3. 新規ユーザー作成（ここに関連テーブル追加などの処理を追加可能）
+      // 新規ユーザーを作成（初期ロールIDは 1 として設定）
       const newUser = await tx.user.create({
         data: {
           supabaseUserId,
           nickname,
-          roleId: 1, // デフォルトのロール（例: 一般ユーザー）
+          roleId: 1,
         },
       });
 
-      // 4. 作成したユーザー情報を返す（トランザクション成功時のみ）
       return newUser;
     });
 
-    // ✅ トランザクションが正常に完了した場合、200 OK を返す
-    return new Response(JSON.stringify(result), { status: 200 });
+    // ✅ 作成成功時にレスポンスを返す
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error: unknown) {
-    // ❌ トランザクション失敗または他のエラー発生時の処理
-    console.error("ユーザー情報の保存に失敗しました", error);
+    // ❌ エラー処理：既存ユーザー、DBエラー、パース失敗など
+    console.error("❌ ユーザー登録に失敗しました:", error);
 
-    // エラー内容を整形してレスポンスに含める
-    const errorMessage =
+    const message =
       error instanceof Error && error.message === "ユーザーはすでに存在します。"
         ? error.message
         : "ユーザー情報の保存に失敗しました";
 
-    return new Response(JSON.stringify({ message: errorMessage }), {
+    return new Response(JSON.stringify({ message }), {
       status: 500,
+      headers: { "Content-Type": "application/json" },
     });
   }
 }

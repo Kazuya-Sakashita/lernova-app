@@ -28,6 +28,8 @@
     "@radix-ui/react-toast": "^1.2.10",
     "@radix-ui/react-toggle-group": "^1.1.9",
     "@radix-ui/react-tooltip": "^1.1.8",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/auth-helpers-shared": "^0.7.0",
     "@supabase/supabase-js": "^2.49.1",
     "@types/jsonwebtoken": "^9.0.9",
     "antd": "^5.24.4",

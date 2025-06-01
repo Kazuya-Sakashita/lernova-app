@@ -3,9 +3,9 @@
 import useSWR from "swr";
 import { fetcher } from "@/app/_utils/fetcher";
 
-export function useCategoryDistribution(userId: string | undefined) {
+export function useCategoryDistribution() {
   const { data, error, isLoading } = useSWR(
-    userId ? `/api/user/category-distribution?supabaseUserId=${userId}` : null,
+    "/api/user/category-distribution",
     fetcher
   );
 

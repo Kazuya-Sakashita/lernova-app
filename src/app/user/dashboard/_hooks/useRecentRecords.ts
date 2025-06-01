@@ -3,11 +3,13 @@
 import useSWR from "swr";
 import { fetcher } from "@/app/_utils/fetcher";
 
-export function useRecentRecords(userId: string | undefined) {
+// -----------------------------
+// ✅ 最近の学習記録を取得するカスタムフック
+// -----------------------------
+// セッションベースで supabaseUserId を取得するため、引数不要
+export function useRecentRecords() {
   const { data, error, isLoading } = useSWR(
-    userId
-      ? `/api/user/recent-learning-records?supabaseUserId=${userId}`
-      : null,
+    "/api/user/recent-learning-records", // ✅ クエリなしの固定エンドポイント
     fetcher
   );
 

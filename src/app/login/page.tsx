@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@utils/supabase";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Label } from "@ui/label";
@@ -12,16 +11,12 @@ import { LoginFormData } from "@/app/_types/formTypes";
 import AppLogoLink from "../_components/AppLogoLink";
 
 export default function LoginPage() {
-  // -------------------------------
-  // 状態管理
-  // -------------------------------
-  const [error, setError] = useState<string | null>(null); // 認証エラー表示
-  const [emailSent, setEmailSent] = useState<boolean>(false); // 確認メール送信済み状態
-  const [rememberMe, setRememberMe] = useState<boolean>(false); // ✅ ログイン保持の選択状態
+  const [error, setError] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState<boolean>(false);
+  const [rememberMe, setRememberMe] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false); // フォーム送信中の状態
 
-  // react-hook-form によるフォーム状態管理
   const {
     register,
     handleSubmit,
@@ -29,95 +24,108 @@ export default function LoginPage() {
     getValues,
   } = useForm<LoginFormData>();
 
-  // -------------------------------
-  // ログイン処理
-  // -------------------------------
+  /**
+   * ログイン処理を行う
+   */
   const handleLogin = async (email: string, password: string) => {
     console.log("ログイン処理開始", { email, rememberMe });
 
-    // ✅ 永続ログイン状態の保存（storage の切り替え）
-    if (typeof window !== "undefined") {
-      if (rememberMe) {
-        localStorage.setItem("persistLogin", "true");
-        sessionStorage.removeItem("persistLogin");
-      } else {
-        sessionStorage.setItem("persistLogin", "false");
-        localStorage.removeItem("persistLogin");
-      }
-    }
-
-    // Supabase でログイン試行
-    const { data: userData, error: authError } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password,
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // ✅ クッキー送受信に必須
+        body: JSON.stringify({ email, password, rememberMe }),
       });
 
-    // 認証失敗時の処理
-    if (authError) {
-      console.error("認証エラー:", authError.message);
-      if (authError.message === "Email not confirmed") {
-        setError("メールアドレスが未確認です。確認メールを開封してください。");
-      } else {
-        setError(authError.message);
+      // 期待するレスポンス形式の確認
+      const contentType = response.headers.get("content-type");
+      if (!contentType?.includes("application/json")) {
+        console.error("❌ 不正なレスポンス形式:", contentType);
+        setError("サーバーエラーが発生しました");
+        return null;
       }
-      return null;
-    }
 
-    // 認証成功・確認済みチェック
-    if (userData?.user?.confirmed_at) {
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error("❌ 認証エラー:", result.message);
+        if (result.message === "Email not confirmed") {
+          setError(
+            "メールアドレスが未確認です。確認メールを開封してください。"
+          );
+        } else {
+          setError(result.message || "ログインに失敗しました");
+        }
+        return null;
+      }
+
+      // エラーなし → ログイン成功
       setError(null);
-      return userData.user;
-    } else {
-      setError("メールアドレスが未確認です。確認メールを開封してください。");
+      return true;
+    } catch (err) {
+      console.error("❌ ログイン処理失敗:", err);
+      setError("予期せぬエラーが発生しました");
       return null;
     }
   };
 
-  // -------------------------------
-  // 確認メール再送信処理
-  // -------------------------------
+  /**
+   * 確認メールの再送処理
+   */
   const resendVerificationEmail = async () => {
     const email = getValues("email");
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password: "temporarypassword", // 仮のパスワードで再送要求
+    const response = await fetch("/api/resend-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
 
-    if (error) {
-      alert("確認メールの再送信に失敗しました: " + error.message);
+    const result = await response.json();
+
+    if (!response.ok) {
+      alert("確認メールの再送信に失敗しました: " + result.message);
     } else {
       setEmailSent(true);
       alert("確認メールを再送信しました。");
     }
   };
 
-  // -------------------------------
-  // フォーム送信処理（ログイン本体）
-  // -------------------------------
+  /**
+   * フォーム送信処理
+   */
   const onSubmit = async (data: LoginFormData) => {
     setError(null);
-    setIsSubmitting(true); // フォーム送信中の状態を設定
-    const user = await handleLogin(data.email, data.password);
+    setIsSubmitting(true);
 
-    setIsSubmitting(false); // フォーム送信後の状態をリセット
+    const user = await handleLogin(data.email, data.password);
+    setIsSubmitting(false);
 
     if (user) {
-      // ✅ 学習記録はセッション取得時にプリロード済み
-      router.push("/user/dashboard");
+      // ✅ ログイン直後は少し待機してからセッション取得
+      await new Promise((resolve) => setTimeout(resolve, 200)); // 200ms待機
+
+      const sessionResponse = await fetch("/api/session", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (sessionResponse.ok) {
+        router.push("/user/dashboard");
+      } else {
+        console.warn("❌ セッション取得失敗:", await sessionResponse.text());
+        setError("セッション情報の取得に失敗しました");
+      }
     }
   };
 
   return (
-    <div className="min-h-screen flex justify-center">
+    <div className="min-h-screen flex justify-center items-center p-4">
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="w-full max-w-md space-y-6"
       >
-        {/* -------------------- */}
-        {/* ロゴ・タイトルセクション */}
-        {/* -------------------- */}
         <div className="text-center">
           <AppLogoLink
             href="/"
@@ -136,9 +144,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* -------------------- */}
-        {/* 入力フィールド */}
-        {/* -------------------- */}
         <div className="space-y-4">
           {/* メールアドレス */}
           <div className="space-y-1">
@@ -184,7 +189,7 @@ export default function LoginPage() {
             )}
           </div>
 
-          {/* ✅ ログイン状態保持チェックボックス */}
+          {/* ログイン状態保持 */}
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -195,7 +200,7 @@ export default function LoginPage() {
               className="accent-pink-500"
             />
             <label htmlFor="rememberMe" className="text-sm text-gray-700">
-              ログイン状態を保持する（localStorage）
+              ログイン状態を保持する
             </label>
           </div>
 
@@ -222,9 +227,6 @@ export default function LoginPage() {
           )}
         </div>
 
-        {/* -------------------- */}
-        {/* ログインボタン */}
-        {/* -------------------- */}
         <Button
           type="submit"
           disabled={isSubmitting}

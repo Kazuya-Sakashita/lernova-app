@@ -1,125 +1,95 @@
 "use client";
 
 import useSWR, { mutate } from "swr";
-import { supabase } from "./supabase";
 import type { SessionUser } from "../_types/formTypes";
-import type { Session } from "@supabase/supabase-js";
 import { preloadLearningRecords } from "@/app/_hooks/useLearningRecords";
 
-// Supabase セッション取得
-async function getSupabaseSession(): Promise<Session | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  console.log("✅ [getSupabaseSession] Session fetched:", session?.user?.id);
-  return session;
-}
+// カスタムエラー型
+type HttpError = Error & { status?: number };
 
-// ユーザー情報取得（+ 学習記録のプリロード）
-async function fetchUserData(userId: string): Promise<SessionUser | null> {
-  if (!userId) {
-    console.warn("⚠️ [fetchUserData] userId is empty");
-    return null;
-  }
+async function fetchSessionUser(): Promise<SessionUser | null> {
+  try {
+    const res = await fetch("/api/session", {
+      method: "GET",
+      credentials: "include",
+    });
 
-  const session = await getSupabaseSession();
-  if (!session?.user || session.user.id !== userId) {
-    console.warn("⚠️ [fetchUserData] Session missing or ID mismatch");
-    return null;
-  }
+    const contentType = res.headers.get("content-type") || "";
 
-  console.log("✅ [fetchUserData] Session user:", userId);
-
-  const { data: users, error: userError } = await supabase
-    .from("User")
-    .select("nickname, roleId, supabaseUserId")
-    .eq("supabaseUserId", userId);
-
-  if (userError || !users || users.length === 0) {
-    console.error(
-      "❌ [fetchUserData] Failed to fetch User record:",
-      userError?.message
-    );
-    return null;
-  }
-
-  const userData = users[0];
-
-  const { data: roles, error: roleError } = await supabase
-    .from("Role")
-    .select("role_name")
-    .eq("id", userData.roleId)
-    .single();
-
-  if (roleError) {
-    console.error(
-      "❌ [fetchUserData] Failed to fetch Role record:",
-      roleError.message
-    );
-    return null;
-  }
-
-  if (userData.supabaseUserId) {
-    console.log("⏳ [fetchUserData] Preloading learning records...");
-    preloadLearningRecords(userData.supabaseUserId).catch((err) =>
-      console.error("❌ [fetchUserData] Preload failed:", err)
-    );
-  }
-
-  console.log(`✅ [fetchUserData] Caching user-${userId}`);
-  return {
-    session,
-    email: session.user.email!,
-    id: session.user.id,
-    supabaseUserId: userData.supabaseUserId,
-    nickname: userData.nickname || session.user.email!,
-    isAdmin: roles.role_name === "admin",
-    token: session.access_token,
-  };
-}
-
-// useSession フック
-export function useSession() {
-  const { data: session, error: sessionError } = useSWR<Session | null>(
-    "supabase-session",
-    getSupabaseSession
-  );
-
-  const userId = session?.user?.id;
-  const key = userId ? `user-${userId}` : null;
-  const fetcher = () => fetchUserData(userId ?? "");
-
-  const { data: user, error } = useSWR<SessionUser | null>(key, fetcher);
-
-  // 🔒 ログアウト処理（セッション削除 + SWRキャッシュクリア + ストレージリセット）
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    console.log("🔓 [handleLogout] Signed out");
-
-    // SWRキャッシュクリア
-    mutate("supabase-session", null);
-    console.log("🗑️ [handleLogout] Cleared cache: supabase-session");
-
-    if (userId) {
-      mutate(`user-${userId}`, null);
-      console.log(`🗑️ [handleLogout] Cleared cache: user-${userId}`);
+    if (res.status === 401) {
+      const error: HttpError = new Error("Unauthorized");
+      error.status = 401;
+      throw error;
     }
 
-    // ログイン状態保存情報を削除（localStorage / sessionStorage 両方）
+    if (!res.ok || !contentType.includes("application/json")) {
+      throw new Error("Invalid session response");
+    }
+
+    const user: SessionUser = await res.json();
+
+    if (user?.supabaseUserId) {
+      preloadLearningRecords().catch((err: unknown) =>
+        console.error("❌ 学習記録のプリロードに失敗:", err)
+      );
+    }
+
+    return user;
+  } catch (error: unknown) {
+    // エラーが Error 型であり、status を持っていれば取得
+    const err = error as HttpError;
+    if (!err.status) {
+      console.error("❌ セッション取得処理で例外発生:", error);
+    }
+    return null;
+  }
+}
+
+export function useSession() {
+  const {
+    data: user,
+    error,
+    isLoading,
+  } = useSWR<SessionUser | null>("session-user", fetchSessionUser, {
+    onErrorRetry: (
+      error: HttpError,
+      _key,
+      _config,
+      revalidate,
+      { retryCount }
+    ) => {
+      if (error?.status === 401) return;
+      if (retryCount >= 3) return;
+      setTimeout(() => revalidate({ retryCount }), 2000);
+    },
+  });
+
+  const handleLogout = async () => {
+    const res = await fetch("/api/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      console.error("❌ ログアウトAPIの呼び出しに失敗しました");
+      return;
+    }
+
+    mutate("session-user", null, false);
+
     if (typeof window !== "undefined") {
       localStorage.removeItem("persistLogin");
       sessionStorage.removeItem("persistLogin");
-      console.log("🧹 [handleLogout] Removed login persistence flags");
+      console.log("🧹 ログイン保持情報削除");
     }
   };
 
   return {
-    session: session ?? null,
     user: user ?? null,
     token: user?.token ?? null,
     supabaseUserId: user?.supabaseUserId ?? null,
-    isLoading: !session && !sessionError,
-    isError: error ?? sessionError,
+    isLoading,
+    isError: error,
     handleLogout,
   };
 }

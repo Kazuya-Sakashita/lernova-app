@@ -1,20 +1,21 @@
-// src/app/_hooks/useWeeklyLearningDuration.ts
 "use client";
 
 import useSWR from "swr";
 import { fetcher } from "@/app/_utils/fetcher";
 
-export function useWeeklyLearningDuration(userId: string | undefined) {
-  const shouldFetch = !!userId;
+// -----------------------------
+// ✅ 週間学習時間を取得するカスタムフック
+// -----------------------------
+// セッションベースで supabaseUserId を取得する API を前提にしているため、userId 引数は不要
+export function useWeeklyLearningDuration() {
+  // SWRによるデータ取得（キャッシュキーは固定）
   const { data, error, isLoading } = useSWR(
-    shouldFetch
-      ? `/api/user/weekly-learning-duration?supabaseUserId=${userId}`
-      : null,
+    "/api/user/weekly-learning-duration",
     fetcher
   );
 
   return {
-    weeklyDurationData: data,
+    weeklyDurationData: data, // { weeklyDuration, lastWeekDuration } など
     isLoading,
     isError: error,
   };
