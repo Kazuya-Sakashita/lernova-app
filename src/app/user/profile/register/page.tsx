@@ -34,7 +34,6 @@ import { Avatar, AvatarImage, AvatarFallback } from "@ui/avatar";
 import { Upload } from "lucide-react";
 import { Separator } from "@ui/separator";
 import { Textarea } from "@ui/textarea";
-import { useSession } from "@/app/_utils/session"; // SWRからセッション情報を取得
 import useUserProfile from "@/app/user/profile/_hooks/useUserProfile"; // useUserProfile フックをインポート
 import { useRouter } from "next/navigation";
 
@@ -80,7 +79,6 @@ type FormValues = z.infer<typeof formSchema>;
 export default function ProfileForm() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useSession();
   const { profileData, isLoading } = useUserProfile(); // useUserProfile フックを使用
   const router = useRouter();
 
@@ -136,19 +134,16 @@ export default function ProfileForm() {
   // フォーム送信処理
   const handleSubmit = async (data: FormValues & { profileImage?: string }) => {
     setIsSubmitting(true);
-    const token = user?.token;
-    const supabaseUserId = user?.id;
     const finalProfileImage = profileImage || "";
 
     try {
-      const res = await fetch("/api/user/profile/register", {
+      const res = await fetch("/api/user/profile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
         },
+        credentials: "include", // ✅ クッキーによるセッション情報を送信
         body: JSON.stringify({
-          supabaseUserId: supabaseUserId,
           first_name: data.first_name,
           last_name: data.last_name,
           gender: data.gender,
