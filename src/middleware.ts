@@ -26,6 +26,7 @@ export async function middleware(req: NextRequest) {
     const isPublicPage =
       req.nextUrl.pathname === "/" || // ホーム
       req.nextUrl.pathname.startsWith("/login") || // ログイン
+      req.nextUrl.pathname.startsWith("/signup") || // 新規登録
       req.nextUrl.pathname.startsWith("/register"); // 登録など
 
     // 未ログインかつ公開ページでない場合は /login にリダイレクト
