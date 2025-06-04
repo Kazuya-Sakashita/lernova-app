@@ -1,5 +1,3 @@
-import type { Session } from "@supabase/supabase-js";
-
 // ログインフォーム用のデータ型
 export type LoginFormData = {
   email: string; // ユーザーのメールアドレス
@@ -16,13 +14,13 @@ export type SignUpFormData = {
 
 // Supabaseセッションとユーザー情報を表すアプリ用の型
 export type SessionUser = {
-  session: Session;
-  email: string;
   id: string;
+  email: string;
   supabaseUserId: string;
   nickname: string;
   isAdmin: boolean;
-  token: string;
+  role_name: string;
+  token?: string | null;
 };
 
 // 学習記録に関連する型

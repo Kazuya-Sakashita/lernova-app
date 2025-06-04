@@ -1,30 +1,24 @@
-"use client"
+"use client";
 
-import { useEffect, useRef } from "react"
-import { Chart, type ChartConfiguration } from "chart.js/auto"
+import { useEffect, useRef } from "react";
+import { Chart, type ChartConfiguration } from "chart.js/auto";
+import type { BarChartData } from "@/app/_types/chartTypes";
 
 interface LearningProgressChartProps {
-  data: {
-    labels: string[]
-    datasets: {
-      label: string
-      data: number[]
-      backgroundColor: string
-    }[]
-  }
+  data: BarChartData;
 }
 
 export function LearningProgressChart({ data }: LearningProgressChartProps) {
-  const chartRef = useRef<HTMLCanvasElement | null>(null)
-  const chartInstance = useRef<Chart | null>(null)
+  const chartRef = useRef<HTMLCanvasElement | null>(null);
+  const chartInstance = useRef<Chart | null>(null);
 
   useEffect(() => {
     if (chartRef.current) {
-      const ctx = chartRef.current.getContext("2d")
+      const ctx = chartRef.current.getContext("2d");
 
       if (ctx) {
         if (chartInstance.current) {
-          chartInstance.current.destroy()
+          chartInstance.current.destroy();
         }
 
         const config: ChartConfiguration = {
@@ -57,19 +51,18 @@ export function LearningProgressChart({ data }: LearningProgressChartProps) {
               },
             },
           },
-        }
+        };
 
-        chartInstance.current = new Chart(ctx, config)
+        chartInstance.current = new Chart(ctx, config);
       }
     }
 
     return () => {
       if (chartInstance.current) {
-        chartInstance.current.destroy()
+        chartInstance.current.destroy();
       }
-    }
-  }, [data])
+    };
+  }, [data]);
 
-  return <canvas ref={chartRef} />
+  return <canvas ref={chartRef} />;
 }
-

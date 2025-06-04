@@ -1,17 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_utils/prisma";
-import { authenticateUser } from "@/app/_utils/authenticateUser";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
+// ========================================
+// ✅ 共通関数: セッションから supabaseUserId を取得
+// ========================================
+// クッキーから Supabase セッションを読み取り、ログイン中のユーザーIDを取得する
+async function getSupabaseUserId(): Promise<string | null> {
+  const supabase = createRouteHandlerClient({ cookies });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return user?.id ?? null;
+}
+
+// ========================================
+// ✅ POST: プロフィール情報を保存または更新
+// ========================================
 export async function POST(req: NextRequest) {
-  const authError = await authenticateUser(req);
-  if (authError) {
-    return authError; // 認証に失敗した場合はエラーを返す
+  // 認証されたユーザーのIDを取得
+  const supabaseUserId = await getSupabaseUserId();
+  if (!supabaseUserId) {
+    return NextResponse.json(
+      { message: "未認証のリクエストです" },
+      { status: 401 }
+    );
   }
 
   try {
     const body = await req.json();
     const {
-      supabaseUserId,
       first_name,
       last_name,
       gender,
@@ -25,25 +45,24 @@ export async function POST(req: NextRequest) {
 
     console.log("受け取ったデータ:", body);
 
-    // ユーザーオブジェクトの取得
+    // ユーザーデータの取得（nicknameの更新確認用）
     const userObject = await prisma.user.findUnique({
       where: { supabaseUserId },
     });
-    console.log("userObject:", userObject);
 
-    // ユーザーが存在し、ニックネームが変更されている場合は、userテーブルを更新
+    // nickname が変更されている場合のみ、user テーブルを更新
     if (userObject && userObject.nickname !== nickname) {
       await prisma.user.update({
         where: { supabaseUserId },
-        data: { nickname }, // ニックネームを更新
+        data: { nickname },
       });
       console.log("ニックネームが更新されました:", nickname);
     }
 
-    // 誕生日が undefined または null の場合、本日の日付を設定
+    // date_of_birth が空の場合、本日の日付を使用
     const dateOfBirth = date_of_birth ? new Date(date_of_birth) : new Date();
 
-    // プロフィールの upsert（更新または作成）
+    // profile テーブルの upsert（存在すれば更新、なければ作成）
     const profile = await prisma.profile.upsert({
       where: { supabaseUserId },
       update: {
@@ -54,7 +73,7 @@ export async function POST(req: NextRequest) {
         phoneNumber,
         socialLinks,
         profile_picture,
-        date_of_birth: dateOfBirth, // 本日の日付を設定
+        date_of_birth: dateOfBirth,
       },
       create: {
         supabaseUserId,
@@ -65,7 +84,7 @@ export async function POST(req: NextRequest) {
         phoneNumber,
         socialLinks,
         profile_picture,
-        date_of_birth: dateOfBirth, // 本日の日付を設定
+        date_of_birth: dateOfBirth,
       },
     });
 
@@ -81,55 +100,62 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest) {
-  // リクエストヘッダーから supabaseUserId を取得
-  const supabaseUserId = req.headers.get("supabaseUserId");
-
-  // supabaseUserId が存在しない場合は 400 を返す
+// ========================================
+// ✅ GET: プロフィール情報を取得
+// ========================================
+export async function GET() {
+  // セッションからユーザーIDを取得
+  const supabaseUserId = await getSupabaseUserId();
   if (!supabaseUserId) {
     return NextResponse.json(
-      { message: "supabaseUserIdが提供されていません。" },
-      { status: 400 }
+      { message: "未認証のリクエストです" },
+      { status: 401 }
     );
   }
 
-  // user テーブルから nickname を取得（nickname は user に保存されている）
-  const user = await prisma.user.findUnique({
-    where: { supabaseUserId },
-    select: { nickname: true },
-  });
+  try {
+    // nickname は user テーブルに保存されている
+    const user = await prisma.user.findUnique({
+      where: { supabaseUserId },
+      select: { nickname: true },
+    });
 
-  // ユーザーが存在しない場合は 404 を返す
-  if (!user) {
+    if (!user) {
+      return NextResponse.json(
+        { message: "ユーザーが見つかりません。" },
+        { status: 404 }
+      );
+    }
+
+    // profile テーブルの情報を取得（存在しない可能性あり）
+    const profile = await prisma.profile.findUnique({
+      where: { supabaseUserId },
+    });
+
+    // プロフィールが未登録の場合に返す空データ
+    const defaultProfile = {
+      supabaseUserId,
+      first_name: "",
+      last_name: "",
+      gender: "",
+      bio: "",
+      phoneNumber: "",
+      socialLinks: "",
+      profile_picture: "",
+      date_of_birth: "",
+    };
+
+    // nickname を含めたレスポンスを生成
+    const response = profile
+      ? { ...profile, nickname: user.nickname }
+      : { ...defaultProfile, nickname: user.nickname };
+
+    return NextResponse.json(response, { status: 200 });
+  } catch (error) {
+    console.error("プロフィール取得エラー:", error);
     return NextResponse.json(
-      { message: "ユーザーが見つかりません。" },
-      { status: 404 }
+      { message: "プロフィール取得に失敗しました" },
+      { status: 500 }
     );
   }
-
-  // profile テーブルからプロフィールを取得（存在しない場合もあり得る）
-  const profile = await prisma.profile.findUnique({
-    where: { supabaseUserId },
-  });
-
-  // プロフィール未登録時に返すデフォルトの空データを定義
-  const defaultProfile = {
-    supabaseUserId,
-    first_name: "",
-    last_name: "",
-    gender: "",
-    bio: "",
-    phoneNumber: "",
-    socialLinks: "",
-    profile_picture: "",
-    date_of_birth: "",
-  };
-
-  // プロフィールがある場合はそれを返し、無ければ空データ + nickname を返す
-  const response = profile
-    ? { ...profile, nickname: user.nickname }
-    : { ...defaultProfile, nickname: user.nickname };
-
-  // 成功レスポンスとして返却
-  return NextResponse.json(response, { status: 200 });
 }

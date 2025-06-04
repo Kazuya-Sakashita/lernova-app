@@ -9,32 +9,26 @@ import { LearningRecord } from "@/app/_types/formTypes";
 import { useSession } from "@utils/session";
 import { fetcher } from "@utils/fetcher";
 import useSWR from "swr";
-import { useLearningRecords } from "@hooks/useLearningRecords"; // ✅ SWRからの取得に切り替え
+import { useLearningRecords } from "@hooks/useLearningRecords";
 
 const LearningHistory = () => {
   const [recordToEdit, setRecordToEdit] = useState<LearningRecord | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const { user } = useSession();
-  const userId = user?.supabaseUserId ?? "";
 
-  // ✅ SWRで学習記録を取得
-  const { records: rawRecords, refreshLearningRecords } =
-    useLearningRecords(userId);
+  const { records: rawRecords, refreshLearningRecords } = useLearningRecords();
 
-  // ✅ SWRでヒートマップデータを取得
   const { data: heatmapData } = useSWR(
-    userId ? `/api/user/heatmap?supabaseUserId=${userId}` : null,
+    user ? `/api/user/heatmap` : null,
     fetcher
   );
 
-  // ✅ ヒートマップ再取得
   const refreshHeatmap = () => {
-    if (userId) {
-      mutate(`/api/user/heatmap?supabaseUserId=${userId}`);
+    if (user) {
+      mutate(`/api/user/heatmap`);
     }
   };
 
-  // ✅ RawRecord → LearningRecord に変換
   const transformedRecords: LearningRecord[] = (rawRecords ?? []).map((r) => ({
     id: r.id,
     supabaseUserId: r.supabaseUserId,
@@ -47,7 +41,6 @@ const LearningHistory = () => {
     content: r.content,
   }));
 
-  // ✅ 学習記録の追加
   const handleAddRecord = async (newRecord: LearningRecord) => {
     setIsSaving(true);
     try {
@@ -55,14 +48,14 @@ const LearningHistory = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${user?.token}`,
         },
+        credentials: "include", // ✅ クッキーを送信
         body: JSON.stringify(newRecord),
       });
 
       if (!response.ok) throw new Error("学習記録の保存に失敗しました");
 
-      await refreshLearningRecords(userId);
+      await refreshLearningRecords();
       refreshHeatmap();
     } catch (error) {
       console.error(error);
@@ -71,7 +64,6 @@ const LearningHistory = () => {
     setIsSaving(false);
   };
 
-  // ✅ 学習記録の削除
   const handleDeleteRecord = async (id: string) => {
     if (!window.confirm("本当にこの学習記録を削除しますか？")) return;
 
@@ -80,13 +72,13 @@ const LearningHistory = () => {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${user?.token}`,
         },
+        credentials: "include", // ✅ クッキーを送信
       });
 
       if (!response.ok) throw new Error("学習記録の削除に失敗しました");
 
-      await refreshLearningRecords(userId);
+      await refreshLearningRecords();
       refreshHeatmap();
     } catch (error) {
       console.error(error);
@@ -94,12 +86,10 @@ const LearningHistory = () => {
     }
   };
 
-  // ✅ 編集モード開始
   const handleEditRecord = (record: LearningRecord) => {
     setRecordToEdit(record);
   };
 
-  // ✅ 学習記録の保存（編集）
   const handleSaveRecord = async (updatedRecord: LearningRecord) => {
     setIsSaving(true);
     try {
@@ -109,15 +99,15 @@ const LearningHistory = () => {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${user?.token}`,
           },
+          credentials: "include", // ✅ クッキーを送信
           body: JSON.stringify(updatedRecord),
         }
       );
 
       if (!response.ok) throw new Error("学習記録の更新に失敗しました");
 
-      await refreshLearningRecords(userId);
+      await refreshLearningRecords();
       setRecordToEdit(null);
       refreshHeatmap();
     } catch (error) {
@@ -131,10 +121,8 @@ const LearningHistory = () => {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">学習履歴</h1>
 
-      {/* ✅ 学習進捗ヒートマップ */}
       <HeatmapSection data={heatmapData ?? []} />
 
-      {/* ✅ タイトルと追加ダイアログ */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">学習記録一覧</h2>
         <LearningRecordDialog
@@ -147,7 +135,6 @@ const LearningHistory = () => {
         />
       </div>
 
-      {/* ✅ 記録一覧テーブル */}
       <LearningRecordTable
         records={transformedRecords}
         handleDeleteRecord={handleDeleteRecord}

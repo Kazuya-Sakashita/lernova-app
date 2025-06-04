@@ -1,30 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { startOfWeek, endOfWeek, subWeeks } from "date-fns";
+import { cookies } from "next/headers";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+
+// 明示的にNode.jsランタイムを指定
+export const runtime = "nodejs";
 
 const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
-  const supabaseUserId = req.nextUrl.searchParams.get("supabaseUserId");
+  const supabase = createRouteHandlerClient({ cookies });
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
 
-  if (!supabaseUserId) {
-    return NextResponse.json({ error: "No user ID provided" }, { status: 400 });
+  if (error || !session?.user) {
+    console.warn("❌ セッション取得失敗:", error?.message);
+    return NextResponse.json({ error: "認証されていません" }, { status: 401 });
+  }
+
+  const userId = session.user.id;
+
+  // UserテーブルからsupabaseUserIdを取得
+  const user = await prisma.user.findUnique({
+    where: {
+      supabaseUserId: userId,
+    },
+    select: {
+      supabaseUserId: true,
+    },
+  });
+
+  if (!user?.supabaseUserId) {
+    return NextResponse.json(
+      { error: "ユーザーが見つかりません" },
+      { status: 404 }
+    );
   }
 
   const now = new Date();
 
-  // 今週の期間（今週月曜〜今週日曜）
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
-  // 先週の期間（1週間前の月曜〜1週間前の日曜）
   const lastWeekStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
   const lastWeekEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
 
-  // 今週分のデータ取得
   const thisWeekRecords = await prisma.learningRecord.findMany({
     where: {
-      supabaseUserId,
+      supabaseUserId: user.supabaseUserId,
       learning_date: {
         gte: weekStart,
         lte: weekEnd,
@@ -33,10 +59,9 @@ export async function GET(req: NextRequest) {
     select: { duration: true },
   });
 
-  // 先週分のデータ取得
   const lastWeekRecords = await prisma.learningRecord.findMany({
     where: {
-      supabaseUserId,
+      supabaseUserId: user.supabaseUserId,
       learning_date: {
         gte: lastWeekStart,
         lte: lastWeekEnd,
@@ -45,7 +70,6 @@ export async function GET(req: NextRequest) {
     select: { duration: true },
   });
 
-  // 合計時間を計算
   const weeklyDuration = thisWeekRecords.reduce(
     (sum: number, r: { duration: number }) => sum + r.duration,
     0
@@ -55,8 +79,6 @@ export async function GET(req: NextRequest) {
     (sum: number, r: { duration: number }) => sum + r.duration,
     0
   );
-
-  console.log("This week:", weeklyDuration, "Last week:", lastWeekDuration);
 
   return NextResponse.json({
     weeklyDuration,
