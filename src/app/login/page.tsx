@@ -189,7 +189,7 @@ export default function LoginPage() {
             )}
           </div>
 
-          {/* ログイン状態保持 */}
+          {/* ログイン状態保持
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -202,7 +202,7 @@ export default function LoginPage() {
             <label htmlFor="rememberMe" className="text-sm text-gray-700">
               ログイン状態を保持する
             </label>
-          </div>
+          </div>*/}
 
           {/* エラー表示 */}
           {error && <p className="text-sm text-red-500">{error}</p>}
