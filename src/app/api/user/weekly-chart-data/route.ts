@@ -1,35 +1,45 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { startOfWeek, endOfWeek, eachDayOfInterval, format } from "date-fns";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
 const prisma = new PrismaClient();
 
-export async function GET(req: NextRequest) {
-  // クエリパラメータから supabaseUserId を取得
-  const supabaseUserId = req.nextUrl.searchParams.get("supabaseUserId");
+// -----------------------------
+// ✅ GET: 今週の学習時間（曜日別集計）
+// -----------------------------
+export async function GET() {
+  // ✅ Supabaseクライアントからセッション経由でユーザー情報を取得
+  const supabase = createRouteHandlerClient({ cookies });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // ユーザーIDが指定されていない場合は 400 エラーを返す
-  if (!supabaseUserId) {
-    console.warn("⚠️ supabaseUserId が指定されていません");
-    return NextResponse.json({ error: "No user ID provided" }, { status: 400 });
+  // ✅ 未認証ユーザーの場合は 401 を返す
+  if (!user) {
+    console.warn("⚠️ 未認証アクセスがありました");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 現在日付を基準に今週の月曜日～日曜日を取得
+  const supabaseUserId = user.id;
+
+  // ✅ 今週の開始（月曜）と終了（日曜）を計算
   const now = new Date();
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // 月曜始まり
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 }); // 日曜終わり
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
   console.log("📆 今週の期間:", {
     start: format(weekStart, "yyyy-MM-dd"),
     end: format(weekEnd, "yyyy-MM-dd"),
   });
 
-  // 対象週の各日付（yyyy-MM-dd形式）を生成
+  // ✅ 各日付（yyyy-MM-dd）の文字列配列を生成
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd }).map(
     (date) => format(date, "yyyy-MM-dd")
   );
 
-  // 指定ユーザーの今週の学習記録を取得（学習日と学習時間のみ）
+  // ✅ ユーザーの今週の学習記録を取得（必要なフィールドのみ）
   const records = await prisma.learningRecord.findMany({
     where: {
       supabaseUserId,
@@ -46,13 +56,13 @@ export async function GET(req: NextRequest) {
 
   console.log(`🧾 ${records.length} 件の学習記録を取得しました`);
 
-  // 日別の合計時間を初期化（すべて0でスタート）
+  // ✅ 日別の合計時間を初期化（すべて0）
   const dailyTotals: Record<string, number> = {};
   for (const day of days) {
     dailyTotals[day] = 0;
   }
 
-  // 各記録の日付ごとに duration を加算
+  // ✅ 各記録を対応する日付に加算
   for (const record of records) {
     const dateStr = format(record.learning_date, "yyyy-MM-dd");
     dailyTotals[dateStr] += record.duration;
@@ -60,14 +70,14 @@ export async function GET(req: NextRequest) {
 
   console.log("📊 日別の合計時間:", dailyTotals);
 
-  // レスポンスデータを整形（曜日ラベルと日別合計時間の配列）
+  // ✅ レスポンスデータの整形（曜日ラベルと合計時間配列）
   const response = {
-    labels: ["月", "火", "水", "木", "金", "土", "日"], // 固定順の曜日ラベル
-    data: days.map((date) => dailyTotals[date] ?? 0), // 対応する日付の合計時間
+    labels: ["月", "火", "水", "木", "金", "土", "日"], // 曜日順固定
+    data: days.map((date) => dailyTotals[date] ?? 0),
   };
 
   console.log("✅ 返却データ:", response);
 
-  // JSONレスポンスを返す
+  // ✅ レスポンスを返す
   return NextResponse.json(response);
 }

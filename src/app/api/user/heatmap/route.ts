@@ -1,36 +1,38 @@
 // src/app/api/user/heatmap/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { subDays } from "date-fns";
 import { formatDateJST, getPastNDatesJST } from "../../../_utils/dateHelpers";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
 const prisma = new PrismaClient();
-const DAYS = 90;
+const DAYS = 90; // ヒートマップの表示対象日数
 
-// GroupedRecord型: PrismaのgroupBy結果に対応
-type GroupedRecord = {
-  categoryId: number;
-  _sum: {
-    duration: number | null;
-  };
-  learning_date: Date;
-};
+// -----------------------------
+// ✅ GET: ヒートマップ用の学習記録データ取得
+// -----------------------------
+export async function GET() {
+  // ✅ Supabaseセッションからログインユーザー情報を取得
+  const supabase = createRouteHandlerClient({ cookies });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-export async function GET(req: NextRequest) {
-  // クエリパラメータからユーザーIDを取得
-  const supabaseUserId = req.nextUrl.searchParams.get("supabaseUserId");
-
-  // ユーザーIDが指定されていない場合はエラーを返す
-  if (!supabaseUserId) {
-    return NextResponse.json({ error: "No user ID provided" }, { status: 400 });
+  // 未認証の場合はエラーを返す
+  if (!user) {
+    console.warn("⚠️ ユーザーが未認証のため拒否されました");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 今日の日付と、90日前の日付を取得（UTC）
+  const supabaseUserId = user.id;
+
+  // ✅ 今日と90日前の日付を計算（UTC基準）
   const today = new Date();
   const startDate = subDays(today, DAYS - 1);
 
-  // ✅ 過去90日分の学習記録をカテゴリ＆日付単位で集計（PrismaのgroupByを使用）
+  // ✅ Prismaの groupBy を使って日付＆カテゴリ単位の学習時間を集計
   const records = await prisma.learningRecord.groupBy({
     by: ["categoryId", "learning_date"],
     where: {
@@ -41,25 +43,24 @@ export async function GET(req: NextRequest) {
       },
     },
     _sum: {
-      duration: true, // durationの合計を算出
+      duration: true,
     },
   });
 
-  // 🔢 日付（JST文字列）をキーにして学習時間を合計するMapを初期化
+  // ✅ JSTの日付文字列をキーにした日別合計時間マップを作成
   const totals: Record<string, number> = {};
 
-  // ⏱ JST変換後の "yyyy-MM-dd" をキーにして日別に合計
-  records.forEach((record: GroupedRecord) => {
+  for (const record of records) {
     const dateStr = formatDateJST(record.learning_date);
     totals[dateStr] = (totals[dateStr] ?? 0) + (record._sum.duration ?? 0);
-  });
+  }
 
-  // 📅 過去90日分の全日付に対して、記録がない日は0時間として補完
+  // ✅ 90日分すべての日時データを生成し、該当がない日は0として補完
   const response = getPastNDatesJST(DAYS, today).map((dateStr) => ({
     date: dateStr,
     hours: totals[dateStr] ?? 0,
   }));
 
-  // 📨 JSON形式でフロントに返却
+  // ✅ 整形したヒートマップデータを返す
   return NextResponse.json(response);
 }

@@ -1,37 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@utils/prisma"; // Prisma Clientをインポート
-import { authenticateUser } from "@/app/_utils/authenticateUser"; // 認証ミドルウェアをインポート
-import { recalculateStreakAfterLearningChange } from "@/app/_utils/learningStreak"; // 継続日数再計算の共通関数をインポート
+import { prisma } from "@utils/prisma";
+import { recalculateStreakAfterLearningChange } from "@/app/_utils/learningStreak";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
 // ========================================
-// POSTリクエスト: 学習記録を新規作成
+// ✅ セッションから supabaseUserId を取得する共通関数
+// ========================================
+// Supabaseのセッションに基づいて、ログイン中のユーザーIDを取得
+// 認証されていない場合は null を返す
+async function getSupabaseUserIdFromSession(): Promise<string | null> {
+  const supabase = createRouteHandlerClient({ cookies }); // クッキー経由でSupabaseクライアント生成
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return user?.id ?? null;
+}
+
+// ========================================
+// ✅ POSTリクエスト: 学習記録の新規作成処理
 // ========================================
 export async function POST(req: NextRequest) {
-  // トークン認証
-  const authError = await authenticateUser(req);
-  if (authError) {
-    return authError; // 認証失敗時はエラーを返す
+  // 認証チェック
+  const supabaseUserId = await getSupabaseUserIdFromSession();
+  if (!supabaseUserId) {
+    return NextResponse.json(
+      { message: "未認証のリクエストです" },
+      { status: 401 }
+    );
   }
 
   try {
-    // リクエストボディを取得
+    // リクエストボディのパース
     const body = await req.json();
-    const {
-      supabaseUserId,
-      categoryId,
-      title,
-      date,
-      startTime,
-      endTime,
-      duration,
-      content,
-    } = body;
+    const { categoryId, title, date, startTime, endTime, duration, content } =
+      body;
 
-    console.log("受け取ったデータ:", body);
-
-    // 必須項目の存在チェック
+    // 必須項目のバリデーション
     if (
-      !supabaseUserId ||
       !categoryId ||
       !title ||
       !date ||
@@ -46,7 +53,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Prismaで新しい学習記録を作成
+    // Prismaを使って新しい学習記録を保存
     const newRecord = await prisma.learningRecord.create({
       data: {
         supabaseUserId,
@@ -60,16 +67,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 📈 継続日数を再計算（共通関数を利用）
+    // 学習記録の変更に応じて、継続記録を再計算
     const { currentStreak, bestStreak } =
       await recalculateStreakAfterLearningChange(supabaseUserId);
 
-    console.log("✅ 学習記録が保存され、継続日数も再計算されました:", {
-      currentStreak,
-      bestStreak,
-    });
-
-    // 成功レスポンス
+    // 保存成功レスポンスを返す
     return NextResponse.json(
       { newRecord, currentStreak, bestStreak },
       { status: 200 }
@@ -84,31 +86,28 @@ export async function POST(req: NextRequest) {
 }
 
 // ========================================
-// GETリクエスト: 学習記録を取得
+// ✅ GETリクエスト: 学習記録の一覧取得処理
 // ========================================
-export async function GET(req: NextRequest) {
+export async function GET() {
+  // 認証チェック
+  const supabaseUserId = await getSupabaseUserIdFromSession();
+  if (!supabaseUserId) {
+    return NextResponse.json(
+      { message: "未認証のリクエストです" },
+      { status: 401 }
+    );
+  }
+
   try {
-    // クエリパラメータから supabaseUserId を取得
-    const { searchParams } = new URL(req.url);
-    const supabaseUserId = searchParams.get("supabaseUserId");
-
-    // supabaseUserId がない場合エラー
-    if (!supabaseUserId) {
-      return NextResponse.json(
-        { message: "ユーザーIDが指定されていません" },
-        { status: 400 }
-      );
-    }
-
-    // Prismaで該当ユーザーの学習記録を取得
+    // 指定ユーザーの学習記録を取得（カテゴリ情報も含める）
     const records = await prisma.learningRecord.findMany({
       where: { supabaseUserId },
       include: {
-        category: true, // カテゴリー情報も含める
+        category: true,
       },
     });
 
-    // 取得成功
+    // 取得成功レスポンスを返す
     return NextResponse.json(records, { status: 200 });
   } catch (error) {
     console.error("学習記録取得エラー:", error);

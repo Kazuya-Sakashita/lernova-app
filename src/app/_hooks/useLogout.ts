@@ -1,40 +1,49 @@
+"use client";
+
 import { mutate } from "swr";
 import { useRouter } from "next/navigation";
-import { supabase } from "@utils/supabase";
 
 export const useLogout = () => {
   const router = useRouter();
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
+    try {
+      // ✅ API 経由で Supabase の Cookie セッションを削除
+      const res = await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
 
-    if (error) {
-      console.error("❌ ログアウト失敗:", error.message);
-    } else {
-      console.log("🔓 ログアウトしました");
+      if (!res.ok) {
+        throw new Error("ログアウトAPIの呼び出しに失敗しました");
+      }
 
-      // ✅ 明示的にキャッシュキーを個別にクリアしつつログ出力
-      mutate("supabase-session", null); // セッションのキャッシュ削除
-      console.log("🗑️ キャッシュ削除: supabase-session");
+      console.log("🔓 サーバー側ログアウト成功");
 
-      mutate("user", null); // ユーザー情報のキャッシュ削除
-      console.log("🗑️ キャッシュ削除: user");
+      // ✅ SWR のキャッシュを明示的に無効化（再フェッチしない）
+      mutate("session-user", null, false);
+      console.log("🗑️ キャッシュ削除: session-user");
 
-      // 必要に応じて他のキャッシュをクリア
-      mutate("/api/dashboard", null);
+      mutate("/api/dashboard", null, false);
       console.log("🗑️ キャッシュ削除: /api/dashboard");
 
-      mutate("/api/user/profile", null);
+      mutate("/api/user/profile", null, false);
       console.log("🗑️ キャッシュ削除: /api/user/profile");
 
-      mutate("/api/learning-record", null);
+      mutate("/api/learning-record", null, false);
       console.log("🗑️ キャッシュ削除: /api/learning-record");
 
-      // 必要なキャッシュがあれば追加
-      // mutate("your-key", null); console.log("🗑️ キャッシュ削除: your-key");
+      // ✅ クライアント側ストレージのログイン保持情報も削除
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("persistLogin");
+        sessionStorage.removeItem("persistLogin");
+        console.log("🧹 ローカルストレージ削除完了");
+      }
 
-      // ログインページにリダイレクト
+      // ✅ ログインページへ遷移
       router.push("/login");
+    } catch (error) {
+      console.error("❌ ログアウト処理エラー:", (error as Error).message);
     }
   };
 
