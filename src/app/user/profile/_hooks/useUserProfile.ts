@@ -15,7 +15,7 @@ const useUserProfile = () => {
     if (user) {
       const fetchProfile = async () => {
         try {
-          const res = await fetch("/api/user/profile", {
+          const res = await fetch("/api/user/profile/register", {
             method: "GET",
             credentials: "include", // ✅ クッキーで認証情報を送信（セッションに必要）
           });
