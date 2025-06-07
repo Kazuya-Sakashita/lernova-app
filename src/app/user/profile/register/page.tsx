@@ -132,12 +132,13 @@ export default function ProfileForm() {
   };
 
   // フォーム送信処理
+  // フォーム送信処理
   const handleSubmit = async (data: FormValues & { profileImage?: string }) => {
     setIsSubmitting(true);
     const finalProfileImage = profileImage || "";
 
     try {
-      const res = await fetch("/api/user/profile", {
+      const res = await fetch("/api/user/profile/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
