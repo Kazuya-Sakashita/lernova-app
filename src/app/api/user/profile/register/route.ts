@@ -1,19 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_utils/prisma";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 
 // ========================================
-// ✅ 共通関数: セッションから supabaseUserId を取得
+// ✅ 共通関数: セッションから supabaseUserId を取得（クッキー対応）
 // ========================================
 // クッキーから Supabase セッションを読み取り、ログイン中のユーザーIDを取得する
 async function getSupabaseUserId(): Promise<string | null> {
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = createServerComponentClient({ cookies });
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
-  return user?.id ?? null;
+  if (error || !user) {
+    console.warn("⚠️ ユーザーが未認証です（クッキーから取得できませんでした）");
+    return null;
+  }
+
+  console.log("✅ ユーザー情報を取得しました:");
+  console.log("🆔 ユーザーID:", user.id);
+  console.log("📧 メール:", user.email);
+
+  return user.id;
 }
 
 // ========================================
@@ -104,7 +114,6 @@ export async function POST(req: NextRequest) {
 // ✅ GET: プロフィール情報を取得
 // ========================================
 export async function GET() {
-  // セッションからユーザーIDを取得
   const supabaseUserId = await getSupabaseUserId();
   if (!supabaseUserId) {
     return NextResponse.json(
@@ -114,7 +123,6 @@ export async function GET() {
   }
 
   try {
-    // nickname は user テーブルに保存されている
     const user = await prisma.user.findUnique({
       where: { supabaseUserId },
       select: { nickname: true },
@@ -127,12 +135,10 @@ export async function GET() {
       );
     }
 
-    // profile テーブルの情報を取得（存在しない可能性あり）
     const profile = await prisma.profile.findUnique({
       where: { supabaseUserId },
     });
 
-    // プロフィールが未登録の場合に返す空データ
     const defaultProfile = {
       supabaseUserId,
       first_name: "",
@@ -145,7 +151,6 @@ export async function GET() {
       date_of_birth: "",
     };
 
-    // nickname を含めたレスポンスを生成
     const response = profile
       ? { ...profile, nickname: user.nickname }
       : { ...defaultProfile, nickname: user.nickname };
