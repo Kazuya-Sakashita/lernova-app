@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useSession } from "@utils/session";
 import DashboardHeader from "@/app/user/dashboard/_components/DashboardHeader";
 import DashboardStats from "@/app/user/dashboard/_components/DashboardStats";
@@ -30,7 +31,7 @@ const generateBackgroundColors = (count: number) => {
 };
 
 export default function Home() {
-  const { user } = useSession();
+  const { user, preloadStatus } = useSession();
 
   const { weeklyDurationData } = useWeeklyLearningDuration();
   const { weeklyChart } = useWeeklyChart();
@@ -39,8 +40,14 @@ export default function Home() {
   const { recentRecords } = useRecentRecords();
   const { streakData } = useLearningStreak();
 
-  // フェッチデータ確認
-  console.log("useCategoryDistribution:", useCategoryDistribution);
+  // ✅ プリロードステータスのログ出力
+  useEffect(() => {
+    if (preloadStatus === "success") {
+      console.log("🎉 ダッシュボードプリロード成功");
+    } else if (preloadStatus === "error") {
+      console.warn("⚠️ ダッシュボードプリロード失敗");
+    }
+  }, [preloadStatus]);
 
   const weeklyDuration = weeklyDurationData?.weeklyDuration ?? 0;
   const lastWeekDuration = weeklyDurationData?.lastWeekDuration ?? 0;
