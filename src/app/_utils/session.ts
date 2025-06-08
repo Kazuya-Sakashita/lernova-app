@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import useSWR, { mutate } from "swr";
 import type { SessionUser } from "../_types/formTypes";
-import { preloadDashboardData } from "@/app/_utils/preloadDashboardData"; // ← ここを追加
+import { preloadDashboardData } from "@utils/preloadDashboardData";
 
 // カスタムエラー型
 type HttpError = Error & { status?: number };
@@ -30,14 +30,6 @@ async function fetchSessionUser(): Promise<SessionUser | null> {
 
     const user: SessionUser = await res.json();
 
-    // ✅ セッションユーザーが存在すればダッシュボード用データをプリロード
-    if (user?.supabaseUserId) {
-      preloadDashboardData().catch((err: unknown) =>
-        console.error("❌ ダッシュボードデータのプリロードに失敗:", err)
-      );
-    }
-
-    // ✅ roleId の存在確認ログ
     if (user && "isAdmin" in user) {
       console.log("🧭 Supabase roleId 判定結果（isAdmin）:", user.isAdmin);
     } else {
@@ -56,6 +48,11 @@ async function fetchSessionUser(): Promise<SessionUser | null> {
 
 // カスタムフック本体
 export function useSession() {
+  const hasPreloaded = useRef(false);
+  const [preloadStatus, setPreloadStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+
   const {
     data: user,
     error,
@@ -74,7 +71,32 @@ export function useSession() {
     },
   });
 
-  // ログアウト処理
+  // ✅ プリロード処理（初回のみ）
+  useEffect(() => {
+    if (user?.supabaseUserId && !hasPreloaded.current) {
+      hasPreloaded.current = true;
+      preloadDashboardData()
+        .then(() => {
+          console.log("🎉 プリロード成功");
+          setPreloadStatus("success");
+        })
+        .catch((err) => {
+          console.error("⚠️ プリロード失敗", err);
+          setPreloadStatus("error");
+        });
+    }
+  }, [user?.supabaseUserId]);
+
+  // 管理者フラグログ出力
+  useEffect(() => {
+    if (user) {
+      console.log("✅ isAdmin:", user.isAdmin);
+      if (user.isAdmin === false) {
+        console.log("🔍 管理者ではないユーザーとして扱われます");
+      }
+    }
+  }, [user]);
+
   const handleLogout = async () => {
     const res = await fetch("/api/logout", {
       method: "POST",
@@ -95,16 +117,6 @@ export function useSession() {
     }
   };
 
-  // 管理者フラグログ出力
-  useEffect(() => {
-    if (user) {
-      console.log("✅ isAdmin:", user.isAdmin);
-      if (user.isAdmin === false) {
-        console.log("🔍 管理者ではないユーザーとして扱われます");
-      }
-    }
-  }, [user]);
-
   return {
     user: user ?? null,
     token: user?.token ?? null,
@@ -113,5 +125,6 @@ export function useSession() {
     isLoading,
     isError: error,
     handleLogout,
+    preloadStatus,
   };
 }
