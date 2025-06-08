@@ -3,11 +3,12 @@
 import { useEffect } from "react";
 import useSWR, { mutate } from "swr";
 import type { SessionUser } from "../_types/formTypes";
-import { preloadLearningRecords } from "@/app/_hooks/useLearningRecords";
+import { preloadDashboardData } from "@/app/_utils/preloadDashboardData"; // ← ここを追加
 
 // カスタムエラー型
 type HttpError = Error & { status?: number };
 
+// セッション取得フェッチャー関数
 async function fetchSessionUser(): Promise<SessionUser | null> {
   try {
     const res = await fetch("/api/session", {
@@ -29,13 +30,14 @@ async function fetchSessionUser(): Promise<SessionUser | null> {
 
     const user: SessionUser = await res.json();
 
-    // ✅ roleIdの存在確認ログを追加
+    // ✅ セッションユーザーが存在すればダッシュボード用データをプリロード
     if (user?.supabaseUserId) {
-      preloadLearningRecords().catch((err: unknown) =>
-        console.error("❌ 学習記録のプリロードに失敗:", err)
+      preloadDashboardData().catch((err: unknown) =>
+        console.error("❌ ダッシュボードデータのプリロードに失敗:", err)
       );
     }
 
+    // ✅ roleId の存在確認ログ
     if (user && "isAdmin" in user) {
       console.log("🧭 Supabase roleId 判定結果（isAdmin）:", user.isAdmin);
     } else {
@@ -52,6 +54,7 @@ async function fetchSessionUser(): Promise<SessionUser | null> {
   }
 }
 
+// カスタムフック本体
 export function useSession() {
   const {
     data: user,
@@ -71,6 +74,7 @@ export function useSession() {
     },
   });
 
+  // ログアウト処理
   const handleLogout = async () => {
     const res = await fetch("/api/logout", {
       method: "POST",
@@ -91,7 +95,7 @@ export function useSession() {
     }
   };
 
-  // ✅ isAdminフラグとroleIdチェックのログ出力
+  // 管理者フラグログ出力
   useEffect(() => {
     if (user) {
       console.log("✅ isAdmin:", user.isAdmin);
