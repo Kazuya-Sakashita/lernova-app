@@ -51,7 +51,7 @@ const LearningRecordDialog = ({
   // サーバーからカテゴリー情報を取得
   const fetchCategories = async () => {
     try {
-      const response = await fetch("/api/category");
+      const response = await fetch("/api/category/hierarchical");
       if (!response.ok) {
         throw new Error("カテゴリーの取得に失敗しました");
       }
@@ -188,10 +188,15 @@ const LearningRecordDialog = ({
             >
               <option value="">カテゴリーを選択</option>
               {categories.length > 0 ? (
-                categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.category_name}
-                  </option>
+                categories.map((parent) => (
+                  <React.Fragment key={parent.id}>
+                    <option value={parent.id}>{parent.category_name}</option>
+                    {parent.children?.map((child) => (
+                      <option key={child.id} value={child.id}>
+                        ┗ {child.category_name}
+                      </option>
+                    ))}
+                  </React.Fragment>
                 ))
               ) : (
                 <option disabled>カテゴリが読み込まれませんでした</option>

@@ -51,6 +51,10 @@ model Follower {
 model Category {
   id                       Int                      @id @default(autoincrement())
   category_name            String
+  parentId                 Int?
+  parent                  Category?                @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children                Category[]               @relation("CategoryHierarchy") // 子カテゴリたち
+
   learningRecords          LearningRecord[]
   learningRecordCategories LearningRecordCategory[]
 }

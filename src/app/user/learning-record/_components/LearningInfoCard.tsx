@@ -17,10 +17,7 @@ import {
   SelectItem,
 } from "@ui/select";
 
-interface Category {
-  id: number;
-  category_name: string;
-}
+import { Category } from "@/app/_types/formTypes";
 
 interface Props {
   title: string;
@@ -46,7 +43,7 @@ export default function LearningInfoCard({
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch("/api/category");
+        const res = await fetch("/api/category/hierarchical");
         const data = await res.json();
         setCategories(data);
       } catch (error) {
@@ -90,11 +87,18 @@ export default function LearningInfoCard({
             <SelectTrigger>
               <SelectValue placeholder="カテゴリを選択" />
             </SelectTrigger>
-            <SelectContent>
-              {categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id.toString()}>
-                  {cat.category_name}
-                </SelectItem>
+            <SelectContent className="max-h-64 overflow-y-auto">
+              {categories.map((parent) => (
+                <React.Fragment key={parent.id}>
+                  <div className="px-3 py-1 text-xs font-bold text-muted-foreground">
+                    {parent.category_name}
+                  </div>
+                  {parent.children?.map((child) => (
+                    <SelectItem key={child.id} value={child.id.toString()}>
+                      ┗ {child.category_name}
+                    </SelectItem>
+                  ))}
+                </React.Fragment>
               ))}
               <SelectItem value="その他">その他</SelectItem>
             </SelectContent>
