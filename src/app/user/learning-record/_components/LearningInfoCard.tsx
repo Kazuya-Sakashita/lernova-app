@@ -39,6 +39,7 @@ export default function LearningInfoCard({
   isLearning,
 }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [parentCategoryId, setParentCategoryId] = useState<string>("");
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -53,6 +54,10 @@ export default function LearningInfoCard({
 
     fetchCategories();
   }, []);
+
+  const selectedParent = categories.find(
+    (cat) => cat.id.toString() === parentCategoryId
+  );
 
   return (
     <Card>
@@ -75,35 +80,59 @@ export default function LearningInfoCard({
             disabled={isLearning}
           />
         </div>
+
+        {/* カテゴリ選択 */}
         <div className="space-y-2">
-          <label htmlFor="category" className="text-sm font-medium">
+          <label htmlFor="parent-category" className="text-sm font-medium">
             カテゴリ
           </label>
           <Select
-            value={category}
-            onValueChange={setCategory}
+            value={parentCategoryId}
+            onValueChange={(value) => {
+              setParentCategoryId(value);
+              setCategory(""); // カテゴリ詳細リセット
+            }}
             disabled={isLearning}
           >
             <SelectTrigger>
               <SelectValue placeholder="カテゴリを選択" />
             </SelectTrigger>
-            <SelectContent className="max-h-64 overflow-y-auto">
+            <SelectContent>
               {categories.map((parent) => (
-                <React.Fragment key={parent.id}>
-                  <div className="px-3 py-1 text-xs font-bold text-muted-foreground">
-                    {parent.category_name}
-                  </div>
-                  {parent.children?.map((child) => (
-                    <SelectItem key={child.id} value={child.id.toString()}>
-                      ┗ {child.category_name}
-                    </SelectItem>
-                  ))}
-                </React.Fragment>
+                <SelectItem key={parent.id} value={parent.id.toString()}>
+                  {parent.category_name}
+                </SelectItem>
               ))}
-              <SelectItem value="その他">その他</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        {/* カテゴリ詳細選択 */}
+        {parentCategoryId && selectedParent?.children?.length ? (
+          <div className="space-y-2">
+            <label htmlFor="child-category" className="text-sm font-medium">
+              カテゴリ詳細
+            </label>
+            <Select
+              value={category}
+              onValueChange={setCategory}
+              disabled={isLearning}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="カテゴリ詳細を選択" />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedParent.children.map((child) => (
+                  <SelectItem key={child.id} value={child.id.toString()}>
+                    {child.category_name}
+                  </SelectItem>
+                ))}
+                <SelectItem value="その他">その他</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
+
         {category === "その他" && (
           <div className="space-y-2">
             <label htmlFor="newCategory" className="text-sm font-medium">

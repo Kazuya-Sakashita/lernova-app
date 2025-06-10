@@ -54,8 +54,8 @@ export type UserProfile = {
 export interface Category {
   id: number; // カテゴリーID（カテゴリーの一意な識別子）
   category_name: string; // カテゴリー名（例: "プログラミング", "数学" など）
-  parent_id?: number | null; // 親カテゴリID（ルートなら null）
-  children?: Category[]; // 子カテゴリ（再帰的構造）
+  parent_id?: number | null; // カテゴリID（ルートなら null）
+  children?: Category[]; // カテゴリ詳細（再帰的構造）
 }
 
 // 生データの型を定義（APIなどから取得する元データに対応）

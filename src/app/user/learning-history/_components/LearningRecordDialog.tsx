@@ -9,22 +9,22 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@ui/dialog"; // Dialogに必要なコンポーネントをインポート
+} from "@ui/dialog";
 import FormField from "./FormField";
 import { LearningRecord, Category } from "@/app/_types/formTypes";
-import { useSession } from "@utils/session"; // セッション情報を取得
+import { useSession } from "@utils/session";
 import {
   extractTime,
   convertToUTC,
   extractDateFromUTC,
-} from "@utils/timeUtils"; // 時間変換関数をインポート
+} from "@utils/timeUtils";
 
 interface LearningRecordDialogProps {
   onAddRecord: (record: LearningRecord) => void;
   onSaveRecord: (record: LearningRecord) => void;
   recordToEdit: LearningRecord | null;
   isEditing: boolean;
-  setRecordToEdit: (record: LearningRecord | null) => void; // 親からsetRecordToEditを受け取る
+  setRecordToEdit: (record: LearningRecord | null) => void;
   isSaving: boolean;
 }
 
@@ -33,22 +33,22 @@ const LearningRecordDialog = ({
   onSaveRecord,
   recordToEdit,
   isEditing,
-  setRecordToEdit, // setRecordToEditを受け取る
+  setRecordToEdit,
   isSaving,
 }: LearningRecordDialogProps) => {
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(""); // 開始日付
-  const [endDate, setEndDate] = useState(""); // 終了日付
-  const [startTime, setStartTime] = useState(""); // 開始時間
-  const [endTime, setEndTime] = useState(""); // 終了時間
+  const [date, setDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [content, setContent] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null); // カテゴリID
-  const [open, setOpen] = useState(false); // ダイアログの開閉状態
+  const [parentCategoryId, setParentCategoryId] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
 
   const { user } = useSession();
 
-  // サーバーからカテゴリー情報を取得
   const fetchCategories = async () => {
     try {
       const response = await fetch("/api/category/hierarchical");
@@ -56,41 +56,53 @@ const LearningRecordDialog = ({
         throw new Error("カテゴリーの取得に失敗しました");
       }
       const data = await response.json();
-      setCategories(data); // 取得したデータをcategoriesにセット
+      setCategories(data);
     } catch (error) {
       console.error("カテゴリー取得エラー:", error);
       alert("カテゴリーの取得に失敗しました");
     }
   };
 
-  // 編集モードでフォームをセット
   useEffect(() => {
     if (isEditing && recordToEdit) {
       setTitle(recordToEdit.title);
-      setDate(extractDateFromUTC(recordToEdit.startTime)); // 開始日付
-
-      // UTCからJSTに変換してフォームに表示
-      setStartTime(extractTime(recordToEdit.startTime)); // 開始時間
+      setDate(extractDateFromUTC(recordToEdit.startTime));
+      setStartTime(extractTime(recordToEdit.startTime));
       if (recordToEdit.endTime) {
-        setEndDate(extractDateFromUTC(recordToEdit.endTime)); // 終了日付
-        setEndTime(extractTime(recordToEdit.endTime)); // 終了時間
+        setEndDate(extractDateFromUTC(recordToEdit.endTime));
+        setEndTime(extractTime(recordToEdit.endTime));
       }
-
       setContent(recordToEdit.content);
-      setCategoryId(String(recordToEdit.categoryId)); // 編集時にカテゴリをセット
+      setCategoryId(String(recordToEdit.categoryId));
 
-      setOpen(true); // 編集時はフォームを開く
+      const findParent = (categories: Category[], childId: number): string => {
+        for (const cat of categories) {
+          if (cat.children?.some((child) => child.id === childId)) {
+            return String(cat.id);
+          }
+        }
+        return "";
+      };
+
+      const fetchAndSetParent = async () => {
+        const res = await fetch("/api/category/hierarchical");
+        const data = await res.json();
+        setCategories(data);
+        const parentId = findParent(data, recordToEdit.categoryId);
+        setParentCategoryId(parentId);
+      };
+
+      fetchAndSetParent();
+      setOpen(true);
     } else {
-      setOpen(false); // 編集しない場合はフォームを閉じる
+      setOpen(false);
     }
   }, [isEditing, recordToEdit]);
 
-  // カテゴリ情報の取得
   useEffect(() => {
-    fetchCategories(); // マウント時にカテゴリ情報を取得
+    fetchCategories();
   }, []);
 
-  // フォーム送信時に呼び出す関数
   const handleSubmit = async () => {
     const startDateTime = convertToUTC(date, startTime);
     const endDateTime = convertToUTC(endDate, endTime);
@@ -104,7 +116,6 @@ const LearningRecordDialog = ({
       new Date(endDateTime).getTime() - new Date(startDateTime).getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
     const duration = hours + minutes / 60;
 
     const newRecord: LearningRecord = {
@@ -112,38 +123,35 @@ const LearningRecordDialog = ({
         ? recordToEdit.id
         : Math.random().toString(36).substring(2, 9),
       supabaseUserId: user?.id ?? "",
-      categoryId: categoryId ? parseInt(categoryId) : 0, // ここでカテゴリIDを保存
+      categoryId: categoryId ? parseInt(categoryId) : 0,
       title,
-      date: new Date(date), // 日付はそのまま（集計時に使用するワードとして使用）
-      startTime: startDateTime, // UTCで保存
-      endTime: endDateTime, // UTCで保存
+      date: new Date(date),
+      startTime: startDateTime,
+      endTime: endDateTime,
       duration,
       content,
     };
 
     try {
       if (isEditing) {
-        await onSaveRecord(newRecord); // 編集の場合
+        await onSaveRecord(newRecord);
       } else {
-        await onAddRecord(newRecord); // 新規追加の場合
+        await onAddRecord(newRecord);
       }
-
-      setOpen(false); // ダイアログを閉じる
-      resetForm(); // フォームのリセット
+      setOpen(false);
+      resetForm();
     } catch (error) {
       console.error(error);
       alert("学習記録の保存に失敗しました");
     }
   };
 
-  // ダイアログを閉じた時にデータをリセット
   const handleDialogClose = () => {
-    setOpen(false); // ダイアログを閉じる
-    resetForm(); // フォームのリセット
-    setRecordToEdit(null); // 編集をリセット
+    setOpen(false);
+    resetForm();
+    setRecordToEdit(null);
   };
 
-  // フォームデータをリセットする関数
   const resetForm = () => {
     setTitle("");
     setDate("");
@@ -151,8 +159,11 @@ const LearningRecordDialog = ({
     setEndDate("");
     setEndTime("");
     setContent("");
+    setParentCategoryId("");
     setCategoryId(null);
   };
+
+  const parent = categories.find((cat) => String(cat.id) === parentCategoryId);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -177,32 +188,47 @@ const LearningRecordDialog = ({
         </div>
         <div className="grid gap-4 py-4">
           <div className="space-y-1">
-            <label htmlFor="categoryId" className="text-sm font-medium">
-              カテゴリー
+            <label htmlFor="parentCategoryId" className="text-sm font-medium">
+              カテゴリ
             </label>
             <select
-              id="categoryId"
-              value={categoryId ?? ""}
-              onChange={(e) => setCategoryId(e.target.value)}
+              id="parentCategoryId"
+              value={parentCategoryId}
+              onChange={(e) => {
+                setParentCategoryId(e.target.value);
+                setCategoryId(null);
+              }}
               className="h-10 w-full border-gray-300 rounded-md p-2"
             >
-              <option value="">カテゴリーを選択</option>
-              {categories.length > 0 ? (
-                categories.map((parent) => (
-                  <React.Fragment key={parent.id}>
-                    <option value={parent.id}>{parent.category_name}</option>
-                    {parent.children?.map((child) => (
-                      <option key={child.id} value={child.id}>
-                        ┗ {child.category_name}
-                      </option>
-                    ))}
-                  </React.Fragment>
-                ))
-              ) : (
-                <option disabled>カテゴリが読み込まれませんでした</option>
-              )}
+              <option value="">カテゴリを選択</option>
+              {categories.map((parent) => (
+                <option key={parent.id} value={parent.id}>
+                  {parent.category_name}
+                </option>
+              ))}
             </select>
           </div>
+
+          {parent?.children?.length ? (
+            <div className="space-y-1">
+              <label htmlFor="categoryId" className="text-sm font-medium">
+                カテゴリ詳細
+              </label>
+              <select
+                id="categoryId"
+                value={categoryId ?? ""}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="h-10 w-full border-gray-300 rounded-md p-2"
+              >
+                <option value="">カテゴリ詳細を選択</option>
+                {parent.children.map((child) => (
+                  <option key={child.id} value={child.id}>
+                    {child.category_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
 
           <FormField
             label="タイトル"
@@ -252,20 +278,19 @@ const LearningRecordDialog = ({
             type="button"
             onClick={handleSubmit}
             className="bg-pink-500 hover:bg-pink-600"
-            disabled={isSaving} // 保存中は押せないようにする
+            disabled={isSaving}
           >
             {isSaving
               ? isEditing
                 ? "更新中..."
-                : "保存中..." // 保存中の文言を切り替え
+                : "保存中..."
               : isEditing
               ? "更新"
-              : "追加"}{" "}
+              : "追加"}
           </Button>
-
           <Button
             type="button"
-            onClick={handleDialogClose} // ダイアログを閉じる
+            onClick={handleDialogClose}
             className="bg-gray-300 hover:bg-gray-400"
           >
             キャンセル
